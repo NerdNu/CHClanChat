@@ -307,9 +307,7 @@ proc(_cc_send_message, @channel, @message,
 	if(!array_contains_ic(@channelInfo['members'], player()) && player() != '~console'){
 		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
 	}
-	#Commented out until colors are fixed in mark2 -.-
-	#console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),player()).'> '.@message, false)
-	console('ClanChat: ['.@channel.'] <'.if(player() == '~console','CONSOLE',player()).'> '.@message, false)
+	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),player()).'> '.@message, false)
 	_cc_set_default(@channel)
 	# Permission check succeeded, so send message using raw message
 	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(GRAY).' <'.color(WHITE).if(player() == '~console',color(RED).'CONSOLE'.color(RESET),player()).color(GRAY).'> '.color(GRAY).@message)
