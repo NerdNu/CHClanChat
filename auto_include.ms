@@ -55,14 +55,14 @@ proc(_cc_create_channel, @channel,
 )
 
 proc(_cc_change_owner, @channel, @newOwner,
-	@channel = toLower(@channel)
+	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	#make sure the player is the current owner
-	if (to_lower(player()) != @channelInfo['owner']){
+	if ((to_lower(player()) != @channelInfo['owner']) && (player() != '~console')){
 		die(color(RED).'Only the owner can set a new owner for the channel')
 	}
 	# set the new owner, add the old owner to the managers list
-	@channelInfo['owner'] = toLower(@newOwner)
+	@channelInfo['owner'] = to_lower(@newOwner)
 	_cc_save_channel_info(@channel, @channelInfo)
 	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner.')
 )
