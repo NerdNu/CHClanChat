@@ -54,6 +54,19 @@ proc(_cc_create_channel, @channel,
 	}
 )
 
+proc(_cc_change_owner, @channel, @newOwner,
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	#make sure the player is the current owner
+	if ((to_lower(player()) != @channelInfo['owner']) && (player() != '~console')){
+		die(color(RED).'Only the owner can set a new owner for the channel')
+	}
+	# set the new owner, add the old owner to the managers list
+	@channelInfo['owner'] = to_lower(@newOwner)
+	_cc_save_channel_info(@channel, @channelInfo)
+	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner.')
+)
+
 proc(_cc_set_channel_color, @channel, @color,
 	@colors = array(BLACK, DARK_BLUE, DARK_GREEN, DARK_AQUA, DARK_RED, DARK_PURPLE, GOLD, GRAY, DARK_GRAY, 
 		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
