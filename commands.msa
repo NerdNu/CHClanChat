@@ -6,7 +6,7 @@
 	msg(color(BLUE).'/clanchat members <channel>'.color(WHITE).' - Lists all the members in a channel.')
 	msg(color(BLUE).'/clanchat invite <channel> <player>'.color(WHITE).' - Invites a player to the channel. You must be a manager to invite.')
 	msg(color(BLUE).'/clanchat uninvite <channel> <player>'.color(WHITE).' - Uninvites a previously invited player. You must be a manager.')
-	msg(color(BLUE).'/clanchat changeowner <channel> <player>'.color(WHITE).' - Changes the owner on the given channel. Only the owner can set this. '.color(RED).'Careful! This can't be undone.')
+	msg(color(BLUE).'/clanchat changeowner <channel> <player>'.color(WHITE).' - Changes the owner on the given channel. Only the owner can set this. '.color(RED).'Careful! This can\'t be undone.')
 	msg(color(BLUE).'/clanchat addmanager <channel> <player>'.color(WHITE).' - Adds a manager to the channel. You must be the owner to run this.')
 	msg(color(BLUE).'/clanchat removemanager <channel> <player>'.color(WHITE).' - Removes a manager from the channel. You must be the owner to run this.')
 	msg(color(BLUE).'/clanchat remove <channel> <player>'.color(WHITE).' - Removes a player from the channel. You must be a manager to do this.')

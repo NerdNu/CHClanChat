@@ -64,7 +64,7 @@ proc(_cc_change_owner, @channel, @newOwner,
 	# set the new owner, add the old owner to the managers list
 	@channelInfo['owner'] = to_lower(@newOwner)
 	_cc_save_channel_info(@channel, @channelInfo)
-	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner.')
+	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner)
 )
 
 proc(_cc_set_channel_color, @channel, @color,
