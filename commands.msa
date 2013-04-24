@@ -108,7 +108,7 @@
 <<<
 
 *:/cr [$] = >>>
-	@channel = _cc_get_last_channel_received(player())
+	@channel = _cc_get_last_channel_received(strip_colors(player()))
 	if(@channel == null){
 		die(color(RED).'No previous channel to send to')
 	} else {
