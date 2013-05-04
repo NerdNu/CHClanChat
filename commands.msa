@@ -18,7 +18,7 @@
 			.' need to provide the channel name, unless you want to switch default channels.')
 	msg(color(BLUE).'/cr <message...>'.color(WHITE).' - Sends a message to the last channel that you received a message from, regardless of what your default'
 			.' channel is.')
-	msg(color(BLUE).'/cm'.color(WHITE).' - Lists all the members in the last channel you recieved a message in.')
+	msg(color(BLUE).'/cm'.color(WHITE).' - Lists all the members in the last channel you received a message in.')
 	if(has_permission('nerdch.level.admin')){
 		msg(color(BLUE).'/clanchat channels'.color(WHITE).' - Lists all the channels and their owners.')
 	}
@@ -118,7 +118,7 @@
 <<<
 
 *:/cm [$] = >>>
-	@channel = _cc_get_last_channel_recieved(strip_colors(player()))
+	@channel = _cc_get_last_channel_received(strip_colors(player()))
 	if (@channel == null){
 		die(color(RED).'No previous channel')
 	} else {
