@@ -357,11 +357,15 @@ proc(_cc_send_raw_message, @channel, @message,
 proc(_cc_print_channels,
 	@playerInfo = _cc_get_player_info(strip_colors(player()))
 	@output = array()
-	foreach(@playerInfo['channels'], @channel,
+	foreachelse(@playerInfo['channels'], @channel,
 		@channelInfo = _cc_get_channel_info(@channel)
 		array_push(@output, color(@channelInfo['color']).@channel)
+	, #else
+		msg(color(RED).'You aren\'t in any channels')
 	)
-	msg(array_implode(@output, color(WHITE).', '))
+	if(array_size(@output) > 0){
+		msg(array_implode(@output, color(WHITE).', '))
+	}
 )
 
 /**

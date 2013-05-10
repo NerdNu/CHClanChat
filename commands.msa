@@ -89,7 +89,7 @@
 
 *:/c [$] = >>>
 	if($ == ''){
-		die(color(RED).'Speak up some!')
+		die(color(RED).'Usage: /c [#channel] message')
 	}
 	@args = parse_args($)
 	@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
@@ -97,10 +97,15 @@
 	@message = null
 	if(array_size(@channelMatch) > 1){
 		@channel = @channelMatch[1]
-		@message = array_implode(@args[1..], ' ')
+		@message = trim(array_implode(@args[1..], ' '))
+		if(@message == ''){
+			# They're just changing the default channel
+			_cc_set_default(@channel)
+			die()
+		}
 	} else {
 		@channel = _cc_get_default()
-		@message = $
+		@message = trim($)
 	}
 	if(@channel == null){
 		die(color(RED).'You don\'t have a default channel set (or aren\'t in any channels). Run '.color(LIGHT_PURPLE).'/clanchat'.color(RED).' for help')
