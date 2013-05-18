@@ -123,10 +123,21 @@
 <<<
 
 *:/cm [$] = >>>
-	@channel = _cc_get_last_channel_received(strip_colors(player()))
-	if (@channel == null){
-		die(color(RED).'No previous channel')
+	@channel = _cc_get_default()
+	if ($ == ''){
+		if (@channel == null){
+	                die(color(RED).'No previous channel')
+	        } else {
+	                _cc_print_members(@channel)
+	        }
 	} else {
-		_cc_print_members(@channel)
+		@args = parse_args($)
+		@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
+		if(array_size(@channelMatch) > 1){
+			@channel = @channelMatch[1]
+			_cc_print_members(@channel)
+		} else {
+			die(color(RED).'Usage: /cm [#channel]')
+		}
 	}
 <<<
