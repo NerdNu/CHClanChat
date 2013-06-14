@@ -341,7 +341,7 @@ proc(_cc_leave_channel, @channel,
 	#stop the owner from leaving his channels
 	if (@channelInfo['owner'] == to_lower(strip_colors(player()))){
 		if (array_size(@channelInfo['members']) != 1){
-			die(color(RED).'The owner can\'t leave their channel unless the channel is empty. Please set someone else as mayor first, or use "/clanchat delete <channel>" to remove the channel.')
+			die(color(RED).'The owner can\'t leave their channel unless the channel is empty. Please set someone else as owner first, or use "/clanchat delete <channel>" to remove the channel.')
 		} 
 	}
 	array_remove_values(@channelInfo['members'], to_lower(strip_colors(player())))
