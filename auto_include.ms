@@ -53,6 +53,42 @@ proc(_cc_create_channel, @channel,
 		die(color(LIGHT_PURPLE).'Channel created!')
 	}
 )
+proc(_cc_delete_channel, @channel, 
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	#make sure the player is the current owner
+        if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+		die(color(RED).'Only the owner can delete a channel')
+	}
+	msg(color(RED).'This command is irreversible. Your channel and all associated data WILL Be lost!')
+	msg(color(BLUE).'Type "/clanchat confirm delete" to confirm you actually want to delete your channel.')
+	@player = player()
+	bind(player_command, null, array(player: @player), @event, @channel, @channelInfo, 
+		if(@event['command'] == '/clanchat confirm delete') {
+		        @members = @channelInfo['members']
+		        foreach(@members, @member,
+		                @playerInfo = _cc_get_player_info(@member)
+		                array_remove_values(@playerInfo['channels'], @channel)
+		                _cc_save_player_info(@member, @playerInfo)
+			)
+	                @channels = get_value('clanchat.channels')
+        	        array_remove_values(@channels, @channel)
+                	store_value('clanchat.channels', @channels)
+
+			clear_value('clanchat.channels.'.@channel)
+			msg(color(RED).'Your channel was deleted!')
+			#delete channel
+			unbind();
+		} else {
+			msg(color(RED).'Your channel was not deleted.')
+			unbind();
+		}
+	)
+
+
+
+)
+
 /**
  * Sets the owner in @channel to @newowner
  * player() must be current owner
@@ -212,6 +248,30 @@ proc(_cc_remove_manager, @channel, @player,
 )
 
 /**
+ * Lists managers in a channel. Owner only.
+ */
+proc(_cc_print_managers, @channel, 
+	@channel = to_lower(@channel)
+	@player = to_lower(player())
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(@channelInfo['owner'] == @player){
+		@online = array()
+		@offline = array()
+		foreach(@channelInfo['managers'], @manager,
+	                if(ponline(@manager)){
+	                        array_push(@online, player(@manager))
+	                } else {
+	                        array_push(@offline, @manager)
+	                }
+	        )
+	} else {
+		die (color(RED).'Only owners can do that')
+	}
+        msg(color(GOLD).'Online: '._cc_format_list(@online))
+        msg(color(GOLD).'Offline: '._cc_format_list(@offline))
+)
+
+/**
  * Removes a player from this channel. The owner cannot be removed, and managers can
  * only be removed by the owner, and normal users don't have access at all.
  */
@@ -281,7 +341,7 @@ proc(_cc_leave_channel, @channel,
 	#stop the owner from leaving his channels
 	if (@channelInfo['owner'] == to_lower(strip_colors(player()))){
 		if (array_size(@channelInfo['members']) != 1){
-			die(color(RED).'The owner can\'t leave their channel unless the channel is empty')
+			die(color(RED).'The owner can\'t leave their channel unless the channel is empty. Please set someone else as mayor first, or use "/clanchat delete <channel>" to remove the channel.')
 		} 
 	}
 	array_remove_values(@channelInfo['members'], to_lower(strip_colors(player())))

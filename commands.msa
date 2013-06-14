@@ -3,6 +3,10 @@
 	_cc_create_channel($channelName)
 <<<
 
+*:/clanchat delete $channelName = >>>
+	_cc_delete_channel($channelName)
+<<<
+
 *:/clanchat color $channel $color = >>>
 	_cc_set_channel_color($channel, $color)	
 <<<
@@ -31,6 +35,9 @@
 	_cc_remove_manager($channel, $player)
 <<<
 
+*:/clanchat listmanagers $channel = >>>
+	_cc_print_managers($channel)
+<<<
 *:/clanchat remove $channel $player = >>>
 	_cc_remove_member($channel, $player)
 <<<
@@ -114,9 +121,15 @@
 	}
 <<<
 
+*:/clanchat confirm [$]= >>>
+	
+
+<<<
+
 *:/clanchat [$] = >>>
 	msg(color(RED).'ClanChat usage:')
 	msg(color(BLUE).'/clanchat create <channel>'.color(WHITE).' - Creates a new channel, with you as the owner.')
+	msg(color(BLUE).'/clanchat delete <channel>'.color(WHITE).' - Deletes a channel. Owner only.')
 	msg(color(BLUE).'/clanchat color <channel> <color>'.color(WHITE).' - Sets the channel color. Only the owner can set this.')
 	msg(color(BLUE).'/clanchat members <channel>'.color(WHITE).' - Lists all the members in a channel.')
 	msg(color(BLUE).'/clanchat invite <channel> <player>'.color(WHITE).' - Invites a player to the channel. You must be a manager to invite.')
@@ -124,6 +137,7 @@
 	msg(color(BLUE).'/clanchat changeowner <channel> <player>'.color(WHITE).' - Changes the owner on the given channel. Only the owner can set this. '.color(RED).'Careful! This can\'t be undone.')
 	msg(color(BLUE).'/clanchat addmanager <channel> <player>'.color(WHITE).' - Adds a manager to the channel. You must be the owner to run this.')
 	msg(color(BLUE).'/clanchat removemanager <channel> <player>'.color(WHITE).' - Removes a manager from the channel. You must be the owner to run this.')
+	msg(color(BLUE).'/clanchat listmanagers <channel>'.color(WHITE).' - List all managers in the channel. You must be owner to run this.')
 	msg(color(BLUE).'/clanchat remove <channel> <player>'.color(WHITE).' - Removes a player from the channel. You must be a manager to do this.')
 	msg(color(BLUE).'/clanchat join <channel>'.color(WHITE).' - Joins a channel that you\'ve already been invited to.')
 	msg(color(BLUE).'/clanchat leave <channel>'.color(WHITE).' - Leaves a channel that you\'re in.')
