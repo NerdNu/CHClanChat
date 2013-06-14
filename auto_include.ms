@@ -140,9 +140,9 @@ proc(_cc_print_members, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
-	if (!array_contains(@members, to_lower(strip_colors(player() ) ) )) {
-		die(color(RED).'You must be a member of the channel to see who is in the channel')
-	}
+	#if (!array_contains(@members, to_lower(strip_colors(player() ) ) )) {
+	#	die(color(RED).'You must be a member of the channel to see who is in the channel')
+	#}
 	@online = array()
 	@offline = array()
 	foreach(@members, @member,
