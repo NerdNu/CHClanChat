@@ -53,7 +53,46 @@ proc(_cc_create_channel, @channel,
 		die(color(LIGHT_PURPLE).'Channel created!')
 	}
 )
+proc(_cc_delete_channel, @channel, 
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	#make sure the player is the current owner
+        if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+		die(color(RED).'Only the owner can delete a channel')
+	}
+	msg(color(RED).'This command is irreversible. Your channel and all associated data WILL Be lost!')
+	msg(color(BLUE).'Type "/clanchat confirm delete" to confirm you actually want to delete your channel.')
+	@player = player()
+	bind(player_command, null, array(player: @player), @event, @channel, @channelInfo, 
+		if(@event['command'] == '/clanchat confirm delete') {
+		        @members = @channelInfo['members']
+		        foreach(@members, @member,
+		                @playerInfo = _cc_get_player_info(@member)
+		                array_remove_values(@playerInfo['channels'], @channel)
+		                _cc_save_player_info(@member, @playerInfo)
+			)
+	                @channels = get_value('clanchat.channels')
+        	        array_remove_values(@channels, @channel)
+                	store_value('clanchat.channels', @channels)
 
+			clear_value('clanchat.channels.'.@channel)
+			msg(color(RED).'Your channel was deleted!')
+			#delete channel
+			unbind();
+		} else {
+			msg(color(RED).'Your channel was not deleted.')
+			unbind();
+		}
+	)
+
+
+
+)
+
+/**
+ * Sets the owner in @channel to @newowner
+ * player() must be current owner
+ */
 proc(_cc_change_owner, @channel, @newOwner,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
@@ -67,6 +106,10 @@ proc(_cc_change_owner, @channel, @newOwner,
 	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner)
 )
 
+/**
+ * Changes color of @channel to @color
+ *
+ */
 proc(_cc_set_channel_color, @channel, @color,
 	@colors = array(BLACK, DARK_BLUE, DARK_GREEN, DARK_AQUA, DARK_RED, DARK_PURPLE, GOLD, GRAY, DARK_GRAY, 
 		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
@@ -93,9 +136,13 @@ proc(_cc_set_channel_color, @channel, @color,
  * Messages out a list of all the players in the given channel
  */
 proc(_cc_print_members, @channel,
+	@playerInfo = _cc_get_player_info(to_lower(strip_colors(player())))
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
+	#if (!array_contains(@members, to_lower(strip_colors(player() ) ) )) {
+	#	die(color(RED).'You must be a member of the channel to see who is in the channel')
+	#}
 	@online = array()
 	@offline = array()
 	foreach(@members, @member,
@@ -201,6 +248,30 @@ proc(_cc_remove_manager, @channel, @player,
 )
 
 /**
+ * Lists managers in a channel. Owner only.
+ */
+proc(_cc_print_managers, @channel, 
+	@channel = to_lower(@channel)
+	@player = to_lower(player())
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(@channelInfo['owner'] == @player){
+		@online = array()
+		@offline = array()
+		foreach(@channelInfo['managers'], @manager,
+	                if(ponline(@manager)){
+	                        array_push(@online, player(@manager))
+	                } else {
+	                        array_push(@offline, @manager)
+	                }
+	        )
+	} else {
+		die (color(RED).'Only owners can do that')
+	}
+        msg(color(GOLD).'Online: '._cc_format_list(@online))
+        msg(color(GOLD).'Offline: '._cc_format_list(@offline))
+)
+
+/**
  * Removes a player from this channel. The owner cannot be removed, and managers can
  * only be removed by the owner, and normal users don't have access at all.
  */
@@ -261,20 +332,37 @@ proc(_cc_join_channel, @channel,
 proc(_cc_leave_channel, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
+	@playerInfo = _cc_get_player_info(strip_colors(player()))
+
 	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))){
 		die(color(RED).'You can\'t leave a channel you\'re not in')
 	}
+
+	#stop the owner from leaving his channels
+	if (@channelInfo['owner'] == to_lower(strip_colors(player()))){
+		if (array_size(@channelInfo['members']) != 1){
+			die(color(RED).'The owner can\'t leave their channel unless the channel is empty. Please set someone else as owner first, or use "/clanchat delete <channel>" to remove the channel.')
+		} 
+	}
 	array_remove_values(@channelInfo['members'], to_lower(strip_colors(player())))
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
 	array_remove_values(@playerInfo['channels'], @channel)
 	_cc_save_player_info(strip_colors(player()), @playerInfo)
 	_cc_save_channel_info(@channel, @channelInfo)
+	
+	#if no players are in the channel, remove it
+	if (array_size(@channelInfo['members']) == 0){
+        	clear_value('clanchat.channels.'.@channel)
+		@channels = get_value('clanchat.channels')
+		array_remove_values(@channels, @channel)
+		store_value('clanchat.channels', @channels)
+	}		
 	die(color(BLUE).'You have been removed from '.@channel)
 )
 
 /**
  * Sets the player's default channel. If this is different than the previous channel,
  * then they are sent a message telling them their default channel has changed.
+ * Will not allow users to set their default channel to a channel they are not a member of.
  */
 proc(_cc_set_default, @channel,
 	if(player() == '~console'){
@@ -282,7 +370,12 @@ proc(_cc_set_default, @channel,
 	}
 	@channel = to_lower(@channel)
 	@playerInfo = _cc_get_player_info(strip_colors(player()))
+        @channelInfo = _cc_get_channel_info(@channel)
+
 	if(@playerInfo['default'] != @channel){
+		if (!array_contains(@playerInfo['channels'], @channel)){
+			die (color(RED).'You are not a member of '.@channel.'. Please speak to '.@channelInfo['owner'].' to join')
+		}
 		@playerInfo['default'] = @channel
 		_cc_save_player_info(strip_colors(player()), @playerInfo)
 		msg(color(DARK_BLUE).'Your default channel has been changed to '.@channel)
