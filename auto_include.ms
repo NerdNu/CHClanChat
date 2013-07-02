@@ -7,6 +7,11 @@
  *				- invites: array of invited, but not yet accepted players
  *				- members: array of players in this channel (including managers and the owner)
  *				- owner: The owner's name
+ *				- color: the color of the channel name
+ *				- textcolor: the color of the channel text
+ *				- flags: list of channel flags. (S = Secret, P = Public)
+ *					 Secret channels you must be a member to view other members
+ *					 Public channels anyone can join
  * clanchat.players - An associative array of all the players (key) with their player infos:
  *				- lastReceived: The last channel they receieved a message from
  * 				- default: Their default channel name
@@ -43,7 +48,9 @@ proc(_cc_create_channel, @channel,
 			invites: array(),
 			members: array(to_lower(strip_colors(player()))),
 			owner: to_lower(strip_colors(player())),
-			color: 'BLUE'
+			color: 'BLUE',
+			textcolor: 'GRAY',
+			flags: array()
 		)
 		store_value('clanchat.channels.'.@channel, @channelInfo)
 		@playerInfo = _cc_get_player_info(strip_colors(player()))
@@ -57,7 +64,7 @@ proc(_cc_delete_channel, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	#make sure the player is the current owner
-        if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+	if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
 		die(color(RED).'Only the owner can delete a channel')
 	}
 	msg(color(RED).'This command is irreversible. Your channel and all associated data WILL Be lost!')
@@ -65,15 +72,15 @@ proc(_cc_delete_channel, @channel,
 	@player = player()
 	bind(player_command, null, array(player: @player), @event, @channel, @channelInfo, 
 		if(@event['command'] == '/clanchat confirm delete') {
-		        @members = @channelInfo['members']
-		        foreach(@members, @member,
-		                @playerInfo = _cc_get_player_info(@member)
-		                array_remove_values(@playerInfo['channels'], @channel)
-		                _cc_save_player_info(@member, @playerInfo)
+			@members = @channelInfo['members']
+			foreach(@members, @member,
+				@playerInfo = _cc_get_player_info(@member)
+				array_remove_values(@playerInfo['channels'], @channel)
+				_cc_save_player_info(@member, @playerInfo)
 			)
-	                @channels = get_value('clanchat.channels')
-        	        array_remove_values(@channels, @channel)
-                	store_value('clanchat.channels', @channels)
+			@channels = get_value('clanchat.channels')
+			array_remove_values(@channels, @channel)
+			store_value('clanchat.channels', @channels)
 
 			clear_value('clanchat.channels.'.@channel)
 			msg(color(RED).'Your channel was deleted!')
@@ -131,6 +138,30 @@ proc(_cc_set_channel_color, @channel, @color,
 		die('Only one of the following can be set as the channel color: '.array_implode(@output, color(WHITE).', '))
 	}
 )
+/**
+ * Changes the textcolor of @channel to @color
+ */
+proc(_cc_set_channel_text_color, @channel, @color,
+	@colors = array(BLACK, DARK_BLUE, DARK_GREEN, DARK_AQUA, DARK_RED, DARK_PURPLE, GOLD, GRAY, DARK_GRAY,
+		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(to_lower(strip_colors(player())) != @channelInfo['owner']){
+		die(color(RED).'Only the owner can change the channel\'s color.')
+	}
+	@color = to_upper(@color)
+	if(array_contains(@colors, @color)){
+		@channelInfo['textcolor'] = @color
+		_cc_save_channel_info(@channel, @channelInfo)
+		die(color(BLUE).'Channel color changed to '.color(@color).@color.'!')
+	} else {
+		@output = array()
+		foreach(@colors, @color,
+			array_push(@output, color(@color).@color)
+		)
+		die('Only one of the following can be set as the channel color: '.array_implode(@output, color(WHITE).', '))
+	}
+)
 
 /**
  * Messages out a list of all the players in the given channel
@@ -140,9 +171,11 @@ proc(_cc_print_members, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
-	#if (!array_contains(@members, to_lower(strip_colors(player() ) ) )) {
-	#	die(color(RED).'You must be a member of the channel to see who is in the channel')
-	#}
+	if(array_contains(@channelInfo['flags'], 'secret')){
+		if (!array_contains(@members, to_lower(strip_colors(player())))) {
+			die(color(RED).'This channel is secret. You must be a member of the channel to see who is in the channel')
+		}
+	}
 	@online = array()
 	@offline = array()
 	foreach(@members, @member,
@@ -258,17 +291,17 @@ proc(_cc_print_managers, @channel,
 		@online = array()
 		@offline = array()
 		foreach(@channelInfo['managers'], @manager,
-	                if(ponline(@manager)){
-	                        array_push(@online, player(@manager))
-	                } else {
-	                        array_push(@offline, @manager)
-	                }
-	        )
+			if(ponline(@manager)){
+				array_push(@online, player(@manager))
+			} else {
+				array_push(@offline, @manager)
+			}
+		)
 	} else {
 		die (color(RED).'Only owners can do that')
 	}
-        msg(color(GOLD).'Online: '._cc_format_list(@online))
-        msg(color(GOLD).'Offline: '._cc_format_list(@offline))
+	msg(color(GOLD).'Online: '._cc_format_list(@online))
+	msg(color(GOLD).'Offline: '._cc_format_list(@offline))
 )
 
 /**
@@ -306,11 +339,11 @@ proc(_cc_join_channel, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@playerInfo = _cc_get_player_info(strip_colors(player()))
-        @output = array()
+	@output = array()
 	if(array_contains(@playerInfo['channels'], @channel)){
 		die(color(RED).'You\'re already a member of this channel!')
 	}
-	if(!array_contains_ic(@channelInfo['invites'], strip_colors(player()))){
+	if(and(!array_contains_ic(@channelInfo['invites'], strip_colors(player())),!(array_contains(@channelInfo['flags'],'public')))){
 		die(color(RED).'You can\'t join a channel without an invite, so speak with '.@channelInfo['owner'].' about joining')
 	}
 	array_remove_values(@channelInfo['invites'], to_lower(strip_colors(player())))
@@ -351,7 +384,7 @@ proc(_cc_leave_channel, @channel,
 	
 	#if no players are in the channel, remove it
 	if (array_size(@channelInfo['members']) == 0){
-        	clear_value('clanchat.channels.'.@channel)
+		clear_value('clanchat.channels.'.@channel)
 		@channels = get_value('clanchat.channels')
 		array_remove_values(@channels, @channel)
 		store_value('clanchat.channels', @channels)
@@ -370,7 +403,7 @@ proc(_cc_set_default, @channel,
 	}
 	@channel = to_lower(@channel)
 	@playerInfo = _cc_get_player_info(strip_colors(player()))
-        @channelInfo = _cc_get_channel_info(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
 
 	if(@playerInfo['default'] != @channel){
 		if (!array_contains(@playerInfo['channels'], @channel)){
@@ -421,7 +454,7 @@ proc(_cc_send_message, @channel, @message,
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
 	_cc_set_default(@channel)
 	# Permission check succeeded, so send message using raw message
-	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(GRAY).' <'.color(WHITE).if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).color(GRAY).'> '.color(GRAY).@message)
+	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(GRAY).' <'.color(WHITE).if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).color(GRAY).'> '.color(@channelInfo['textcolor']).@message)
 	foreach(@channelInfo['members'], @member,
 		_cc_set_last_channel_received(@member, @channel)
 	)
@@ -474,6 +507,60 @@ proc(_cc_print_all_channels,
 	)
 	msg(array_implode(@output, color(WHITE).', '))
 )
+/**
+ * Flag management
+ */
+proc(_cc_clanchat_flags, @channel, @flag, @bool,
+	@channelInfo = _cc_get_channel_info(@channel);
+	msg(@channelInfo)
+	if (strip_colors(player()) != @channelInfo['owner']) {
+		die(color(RED).'This command is only available to the channel owner')
+	}
+	if (!(or(@flag == 'public', @flag == 'secret'))) {
+		die(color(RED).'Invalid command, type /clanchat flags for help1')
+	}
+	if (!(or(@bool == 'true', @bool == 'false'))) {
+		die(color(RED).'Invalid command, type /clanchat flags for help2'.@bool)
+	}
+	#at this point, we have an owner, and a valid command. MAGIC TIME.
+	if (@flag == 'public') {
+		if (@bool == 'true') {
+			if (!array_contains(@channelInfo['flags'], 'public')) {
+				array_push(@channelInfo['flags'], 'public')
+			}
+		}
+		if (@bool == 'false') {
+			if (array_contains(@channelInfo['flags'], 'public')) {
+				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
+					if(@channelInfo['flags'][@i] == 'public'){
+						array_remove(@channelInfo['flags'], @i)
+					}
+				)
+			}
+		}
+	}
+	if (@flag == 'secret') {
+		if (@bool == 'true') {
+ 		       if (!array_contains(@channelInfo['flags'], 'secret')) {
+				array_push(@channelInfo['flags'], 'secret')
+			}
+		}
+		if (@bool == 'false') {
+			if (array_contains(@channelInfo['flags'], 'secret')) {
+				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
+					if(@channelInfo['flags'][@i] == 'secret'){
+						array_remove(@channelInfo['flags'], @i)
+					}
+				)
+			}
+		}
+	}
+	_cc_save_channel_info(@channel, @channelInfo)
+	msg(color(BLUE).'Clanchat: '.@flag.' has been set to '.@bool.' for '.@channel)
+	
+)
+
+
 
 /*
  * Utility methods
@@ -541,6 +628,6 @@ proc(_cc_save_channel_info, @channel, @channelInfo,
 
 proc(_cc_assert_manager, @channelInfo,
 	if(@channelInfo['owner'] != to_lower(strip_colors(player())) && !array_contains_ic(@channelInfo['managers'], strip_colors(player()))){
-                die(color(RED).'Sorry, you have to be a manager to do that!')
-        }
+		die(color(RED).'Sorry, you have to be a manager to do that!')
+	}
 )
