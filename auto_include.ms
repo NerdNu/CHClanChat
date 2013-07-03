@@ -524,12 +524,12 @@ proc(_cc_clanchat_flags, @channel, @flag, @bool,
 	}
 	#at this point, we have an owner, and a valid command. MAGIC TIME.
 	if (@flag == 'public') {
-		if (@bool == 'true') {
+		if (@bool) {
 			if (!array_contains(@channelInfo['flags'], 'public')) {
 				array_push(@channelInfo['flags'], 'public')
 			}
 		}
-		if (@bool == 'false') {
+		if (!@bool) {
 			if (array_contains(@channelInfo['flags'], 'public')) {
 				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
 					if(@channelInfo['flags'][@i] == 'public'){
@@ -540,12 +540,12 @@ proc(_cc_clanchat_flags, @channel, @flag, @bool,
 		}
 	}
 	if (@flag == 'secret') {
-		if (@bool == 'true') {
+		if (@bool) {
  		       if (!array_contains(@channelInfo['flags'], 'secret')) {
 				array_push(@channelInfo['flags'], 'secret')
 			}
 		}
-		if (@bool == 'false') {
+		if (!@bool) {
 			if (array_contains(@channelInfo['flags'], 'secret')) {
 				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
 					if(@channelInfo['flags'][@i] == 'secret'){
