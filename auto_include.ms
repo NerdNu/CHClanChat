@@ -344,7 +344,7 @@ proc(_cc_join_channel, @channel,
 		die(color(RED).'You\'re already a member of this channel!')
 	}
 	if(and(!array_contains_ic(@channelInfo['invites'], strip_colors(player())),!(array_contains(@channelInfo['flags'],'public')))){
-		die(color(RED).'You can\'t join a channel without an invite, so speak with '.@channelInfo['owner'].' about joining')
+		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '.@channelInfo['owner'].' about joining')
 	}
 	array_remove_values(@channelInfo['invites'], to_lower(strip_colors(player())))
 	array_push(@channelInfo['members'], to_lower(strip_colors(player())))

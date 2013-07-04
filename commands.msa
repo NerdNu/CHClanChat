@@ -136,9 +136,9 @@
 *:/clanchat flags [$]= >>>
 	if ($ == '') {
 		msg(color(BLUE).'/clanchat flags <channel> <flag> <boolean>.'.color(WHITE).'Changes channel flags')
-		msg('Current support flags are \'public\' and \'secret\'')
+		msg('Two flags are supported, \'public\' and \'secret\'')
 		msg('A \'public\' channel can be joined by anyone, without invite.')
-		msg('A \'secret\' channel requires membership to view current members')
+		msg('A \'secret\' channel requires membership to view channel members')
 		msg('A boolean is either the word \'true\' or \'false\'.')
 		die()
 	}
