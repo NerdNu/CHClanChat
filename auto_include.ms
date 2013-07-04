@@ -9,7 +9,7 @@
  *				- owner: The owner's name
  *				- color: the color of the channel name
  *				- textcolor: the color of the channel text
- *				- flags: list of channel flags. (S = Secret, P = Public)
+ *				- flags: list of channel flags. 
  *					 Secret channels you must be a member to view other members
  *					 Public channels anyone can join
  * clanchat.players - An associative array of all the players (key) with their player infos:
@@ -512,7 +512,6 @@ proc(_cc_print_all_channels,
  */
 proc(_cc_clanchat_flags, @channel, @flag, @bool,
 	@channelInfo = _cc_get_channel_info(@channel);
-	msg(@channelInfo)
 	if (strip_colors(player()) != @channelInfo['owner']) {
 		die(color(RED).'This command is only available to the channel owner')
 	}
@@ -600,6 +599,13 @@ proc(_cc_get_channel_info, @channel,
 	if(@channelInfo == null){
 		die(color(RED).'The channel "'.@channel.'" doesn\'t exist')
 	} else {
+		@keys = array_keys(@channelInfo);
+		if(!array_contains(@keys, 'flags')) {
+			@channelInfo['flags'] = array()
+		}
+		if(!array_contains(@keys, 'textcolor')) {
+			@channelInfo['textcolor'] = LIGHT_GRAY
+		}
 		return(@channelInfo)
 	}
 )
