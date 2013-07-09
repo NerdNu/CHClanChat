@@ -50,7 +50,10 @@ proc(_cc_create_channel, @channel,
 			owner: to_lower(strip_colors(player())),
 			color: 'BLUE',
 			textcolor: 'GRAY',
-			flags: array()
+			flags: array(
+				public: false,
+				secret: false
+			)
 		)
 		store_value('clanchat.channels.'.@channel, @channelInfo)
 		@playerInfo = _cc_get_player_info(strip_colors(player()))
@@ -115,51 +118,27 @@ proc(_cc_change_owner, @channel, @newOwner,
 
 /**
  * Changes color of @channel to @color
- *
+ * @key is either color or textcolor, description is either color or text color
  */
-proc(_cc_set_channel_color, @channel, @color,
+proc(_cc_set_channel_color, @channel, @color, @key, @description,
 	@colors = array(BLACK, DARK_BLUE, DARK_GREEN, DARK_AQUA, DARK_RED, DARK_PURPLE, GOLD, GRAY, DARK_GRAY, 
 		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	if(to_lower(strip_colors(player())) != @channelInfo['owner']){
-		die(color(RED).'Only the owner can change the channel\'s color.')
+		die(color(RED).'Only the owner can change the channel\'s '.@description.'.')
 	}
 	@color = to_upper(@color)
 	if(array_contains(@colors, @color)){
-		@channelInfo['color'] = @color
+		@channelInfo[@key] = @color
 		_cc_save_channel_info(@channel, @channelInfo)
-		die(color(BLUE).'Channel color changed to '.color(@color).@color.'!')
+		die(color(BLUE).'Channel '.@description.' changed to '.color(@color).@color.'!')
 	} else {
 		@output = array()
 		foreach(@colors, @color,
 			array_push(@output, color(@color).@color)
 		)
-		die('Only one of the following can be set as the channel color: '.array_implode(@output, color(WHITE).', '))
-	}
-)
-/**
- * Changes the textcolor of @channel to @color
- */
-proc(_cc_set_channel_text_color, @channel, @color,
-	@colors = array(BLACK, DARK_BLUE, DARK_GREEN, DARK_AQUA, DARK_RED, DARK_PURPLE, GOLD, GRAY, DARK_GRAY,
-		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
-	@channel = to_lower(@channel)
-	@channelInfo = _cc_get_channel_info(@channel)
-	if(to_lower(strip_colors(player())) != @channelInfo['owner']){
-		die(color(RED).'Only the owner can change the channel\'s color.')
-	}
-	@color = to_upper(@color)
-	if(array_contains(@colors, @color)){
-		@channelInfo['textcolor'] = @color
-		_cc_save_channel_info(@channel, @channelInfo)
-		die(color(BLUE).'Channel color changed to '.color(@color).@color.'!')
-	} else {
-		@output = array()
-		foreach(@colors, @color,
-			array_push(@output, color(@color).@color)
-		)
-		die('Only one of the following can be set as the channel color: '.array_implode(@output, color(WHITE).', '))
+		die('Only one of the following can be set as the channel '.@description.':'.array_implode(@output, color(WHITE).', '))
 	}
 )
 
@@ -171,8 +150,8 @@ proc(_cc_print_members, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
-	if(array_contains(@channelInfo['flags'], 'secret')){
-		if (!array_contains(@members, to_lower(strip_colors(player())))) {
+	if(@channelInfo['flags']['secret']){
+		if (!array_contains(@members, to_lower(strip_colors(player()))) && (player() != ~console)) {
 			die(color(RED).'This channel is secret. You must be a member of the channel to see who is in the channel')
 		}
 	}
@@ -343,7 +322,7 @@ proc(_cc_join_channel, @channel,
 	if(array_contains(@playerInfo['channels'], @channel)){
 		die(color(RED).'You\'re already a member of this channel!')
 	}
-	if(and(!array_contains_ic(@channelInfo['invites'], strip_colors(player())),!(array_contains(@channelInfo['flags'],'public')))){
+	if(and(!array_contains_ic(@channelInfo['invites'], strip_colors(player())),!(@channelInfo['flags']['public'] ))){
 		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '.@channelInfo['owner'].' about joining')
 	}
 	array_remove_values(@channelInfo['invites'], to_lower(strip_colors(player())))
@@ -511,22 +490,18 @@ proc(_cc_print_all_channels,
  * Flag management
  */
 proc(_cc_flags, @channel, @flag, @bool,
-	@channelInfo = _cc_get_channel_info(@channel);
+	@channelInfo = _cc_get_channel_info(@channel)
 	if (strip_colors(player()) != @channelInfo['owner']) {
 		die(color(RED).'This command is only available to the channel owner')
 	}
 	if (!(or(@flag == 'public', @flag == 'secret'))) {
-		die(color(RED).'Invalid command, type /clanchat flags for help1')
+		die(color(RED).'Invalid command, type /clanchat flags for help (invalid flag)')
 	}
 	if (!(or(@bool == 'true', @bool == 'false'))) {
-		die(color(RED).'Invalid command, type /clanchat flags for help2'.@bool)
+		die(color(RED).'Invalid command, type /clanchat flags for help (invalid boolean)'.@bool)
 	}
 	#at this point, we have an owner, and a valid command. MAGIC TIME.
-	if (array_contains(@channelInfo['flags'], @flag)) {
-		if (or(@bool == true, @bool == false)){
-			_cc_set_flag(@channel, @flag, @bool)
-		}
-	}
+	@channelInfo['flags'][@flag] = @bool
 	_cc_save_channel_info(@channel, @channelInfo)
 	msg(color(BLUE).'Clanchat: '.@flag.' has been set to '.@bool.' for '.@channel)
 	
@@ -542,14 +517,6 @@ proc(_cc_flags, @channel, @flag, @bool,
  * Gets a value from the database, if it's set. If not, it returns the default value,
  * which defaults to null.
  */
-proc(_cc_set_flag, @channel, @flag, @set,
-    @channelInfo = _cc_get_channel_info(@channel)
-    if (@set) {
-        @channelInfo['flags'][@flag] = true
-    } else {
-	@channelInfo['flags'][@flag] = false
-    }
-) 
 proc(_cc_get_value, @key, @default = null,
 	if(has_value(@key)){
 		return(get_value(@key))

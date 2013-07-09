@@ -8,11 +8,11 @@
 <<<
 
 *:/clanchat color $channel $color = >>>
-	_cc_set_channel_color($channel, $color)	
+	_cc_set_channel_color($channel, $color, 'color', 'color')	
 <<<
 
 *:/clanchat textcolor $channel $color = >>>
-	_cc_set_channel_text_color($channel, $color)
+	_cc_set_channel_color($channel, $color, 'textcolor', 'text color')
 <<<
 
 *:/clanchat members $channelName = >>>
