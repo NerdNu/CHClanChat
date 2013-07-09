@@ -510,7 +510,7 @@ proc(_cc_print_all_channels,
 /**
  * Flag management
  */
-proc(_cc_clanchat_flags, @channel, @flag, @bool,
+proc(_cc_flags, @channel, @flag, @bool,
 	@channelInfo = _cc_get_channel_info(@channel);
 	if (strip_colors(player()) != @channelInfo['owner']) {
 		die(color(RED).'This command is only available to the channel owner')
@@ -522,36 +522,9 @@ proc(_cc_clanchat_flags, @channel, @flag, @bool,
 		die(color(RED).'Invalid command, type /clanchat flags for help2'.@bool)
 	}
 	#at this point, we have an owner, and a valid command. MAGIC TIME.
-	if (@flag == 'public') {
-		if (@bool) {
-			if (!array_contains(@channelInfo['flags'], 'public')) {
-				array_push(@channelInfo['flags'], 'public')
-			}
-		}
-		if (!@bool) {
-			if (array_contains(@channelInfo['flags'], 'public')) {
-				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
-					if(@channelInfo['flags'][@i] == 'public'){
-						array_remove(@channelInfo['flags'], @i)
-					}
-				)
-			}
-		}
-	}
-	if (@flag == 'secret') {
-		if (@bool) {
- 		       if (!array_contains(@channelInfo['flags'], 'secret')) {
-				array_push(@channelInfo['flags'], 'secret')
-			}
-		}
-		if (!@bool) {
-			if (array_contains(@channelInfo['flags'], 'secret')) {
-				for (assign(@i, 0), @i < array_size(@channelInfo['flags']), @i = @i + 1,
-					if(@channelInfo['flags'][@i] == 'secret'){
-						array_remove(@channelInfo['flags'], @i)
-					}
-				)
-			}
+	if (array_contains(@channelInfo['flags'], @flag)) {
+		if (or(@bool == true, @bool == false)){
+			_cc_set_flag(@channel, @flag, @bool)
 		}
 	}
 	_cc_save_channel_info(@channel, @channelInfo)
@@ -569,6 +542,14 @@ proc(_cc_clanchat_flags, @channel, @flag, @bool,
  * Gets a value from the database, if it's set. If not, it returns the default value,
  * which defaults to null.
  */
+proc(_cc_set_flag, @channel, @flag, @set,
+    @channelInfo = _cc_get_channel_info(@channel)
+    if (@set) {
+        @channelInfo['flags'][@flag] = true
+    } else {
+	@channelInfo['flags'][@flag] = false
+    }
+) 
 proc(_cc_get_value, @key, @default = null,
 	if(has_value(@key)){
 		return(get_value(@key))
@@ -601,7 +582,10 @@ proc(_cc_get_channel_info, @channel,
 	} else {
 		@keys = array_keys(@channelInfo);
 		if(!array_contains(@keys, 'flags')) {
-			@channelInfo['flags'] = array()
+			@channelInfo['flags'] = array(
+				public: false,
+				secret: false
+			)
 		}
 		if(!array_contains(@keys, 'textcolor')) {
 			@channelInfo['textcolor'] = LIGHT_GRAY

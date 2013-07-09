@@ -146,7 +146,7 @@
 	if (array_size(@args) != 3) {
 		die(color(RED).'Error: type /clanchat flags for help')
 	}
-	_cc_clanchat_flags(@args[0], @args[1], @args[2])
+	_cc_flags(@args[0], @args[1], @args[2])
 
 <<<
 
