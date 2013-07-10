@@ -555,7 +555,7 @@ proc(_cc_get_channel_info, @channel,
 			)
 		}
 		if(!array_contains(@keys, 'textcolor')) {
-			@channelInfo['textcolor'] = LIGHT_GRAY
+			@channelInfo['textcolor'] = GRAY
 		}
 		return(@channelInfo)
 	}
