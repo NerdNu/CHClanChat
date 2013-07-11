@@ -491,7 +491,7 @@ proc(_cc_print_all_channels,
  */
 proc(_cc_flags, @channel, @flag, @bool,
 	@channelInfo = _cc_get_channel_info(@channel)
-	if (strip_colors(player()) != @channelInfo['owner']) {
+	if (to_lower(strip_colors(player())) != @channelInfo['owner']) {
 		die(color(RED).'This command is only available to the channel owner')
 	}
 	if (!(or(@flag == 'public', @flag == 'secret'))) {
