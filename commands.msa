@@ -1,4 +1,3 @@
-
 *:/clanchat create $channelName = >>>
 	_cc_create_channel($channelName)
 <<<
@@ -13,6 +12,10 @@
 
 *:/clanchat textcolor $channel $color = >>>
 	_cc_set_channel_color($channel, $color, 'textcolor', 'text color')
+<<<
+
+*:/clanchat alertcolor $channel $color = >>>
+	_cc_set_channel_color($channel, $color, 'alertcolor', 'alert color')
 <<<
 
 *:/clanchat members $channelName = >>>
@@ -96,6 +99,32 @@
 	_cc_send_message(@channel, @message)
 <<<
 
+*:/ca [$] = >>>
+	if($ == ''){
+		die(color(RED).'Usage: /c [#channel] message')
+	}
+	@args = parse_args($)
+	@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
+	@channel = null
+	@message = null
+	if(array_size(@channelMatch) > 1){
+		@channel = @channelMatch[1]
+		@message = trim(array_implode(@args[1..], ' '))
+		if(@message == ''){
+			# They're just changing the default channel
+			_cc_set_default(@channel)
+			die()
+		}
+	} else {
+		@channel = _cc_get_default()
+		@message = trim($)
+	}
+	if(@channel == null){
+		die(color(RED).'You don\'t have a default channel set (or aren\'t in any channels). Run '.color(LIGHT_PURPLE).'/clanchat'.color(RED).' for help')
+	}
+	_cc_send_alert(@channel, @message)
+<<<
+
 *:/cr [$] = >>>
 	if ($ == '') {
                 die(color(RED).'Usage: /cr message')
@@ -154,8 +183,9 @@
 	msg(color(RED).'ClanChat usage:')
 	msg(color(BLUE).'/clanchat create <channel>'.color(WHITE).' - Creates a new channel, with you as the owner.')
 	msg(color(BLUE).'/clanchat delete <channel>'.color(WHITE).' - Deletes a channel. Owner only.')
-	msg(color(BLUE).'/clanchat color <channel> <color>'.color(WHITE).' - Sets the channel color. Only the owner can set this.')
-	msg(color(BLUE).'/clanchat textcolor <channel> <color>'.color(WHITE).' - Sets the channel text color. Only the owner can set this.')
+	msg(color(BLUE).'/clanchat color <channel> <color>'.color(WHITE).' - Sets the channel color. Set by channel owner/managers.')
+	msg(color(BLUE).'/clanchat textcolor <channel> <color>'.color(WHITE).' - Sets the channel text color. Set by channel owner/managers.')
+	msg(color(BLUE).'/clanchat alertcolor <channel> <color>'.color(WHITE).' - Sets the channel alert color. Set by channel owner/managers.')
 	msg(color(BLUE).'/clanchat members <channel>'.color(WHITE).' - Lists all the members in a channel.')
 	msg(color(BLUE).'/clanchat invite <channel> <player>'.color(WHITE).' - Invites a player to the channel. You must be a manager to invite.')
 	msg(color(BLUE).'/clanchat uninvite <channel> <player>'.color(WHITE).' - Uninvites a previously invited player. You must be a manager.')
@@ -171,6 +201,8 @@
 	msg(color(BLUE).'/c [#<channel>] <message...>'.color(WHITE).' - Sends a message to the channel. You must be a member of the channel. If you include the'
 			.' channel name (prefixed with #) it will select a channel. After you select a channel, it becomes the default channel, and you no longer'
 			.' need to provide the channel name, unless you want to switch default channels.')
+	msg(color(BLUE).'/ca [#<channel>] <message...>'.color(WHITE).' - Sends an alert message to the channel. You must be an owner/manager of the channel. If a channel name'
+			.' is not included it will alert your current channel.')
 	msg(color(BLUE).'/cr <message...>'.color(WHITE).' - Sends a message to the last channel that you received a message from, regardless of what your default'
 			.' channel is.')
 	msg(color(BLUE).'/cm [#<channel>]'.color(WHITE).' - Lists all members in your default channel. If a channel is given, lists members in that channel.')
@@ -181,5 +213,3 @@
 		msg(color(BLUE).'/clanchat chat <channel> <message>'.color(WHITE).' - Chats to an arbitrary channel. Only available to console.')
 	}
 <<<
-
-
