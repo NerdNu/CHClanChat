@@ -9,6 +9,7 @@
  *				- owner: The owner's name
  *				- color: the color of the channel name
  *				- textcolor: the color of the channel text
+ *				- alertcolor: the color of channel alert text
  *				- flags: list of channel flags. 
  *					 Secret channels you must be a member to view other members
  *					 Public channels anyone can join
@@ -50,6 +51,7 @@ proc(_cc_create_channel, @channel,
 			owner: to_lower(strip_colors(player())),
 			color: 'BLUE',
 			textcolor: 'GRAY',
+			alertcolor: 'GRAY',
 			flags: array(
 				public: false,
 				secret: false
@@ -125,9 +127,7 @@ proc(_cc_set_channel_color, @channel, @color, @key, @description,
 		BLUE, GREEN, AQUA, RED, LIGHT_PURPLE, YELLOW, WHITE)
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(to_lower(strip_colors(player())) != @channelInfo['owner']){
-		die(color(RED).'Only the owner can change the channel\'s '.@description.'.')
-	}
+	_cc_assert_manager(@channelInfo)
 	@color = to_upper(@color)
 	if(array_contains(@colors, @color)){
 		@channelInfo[@key] = @color
@@ -434,6 +434,18 @@ proc(_cc_send_message, @channel, @message,
 	_cc_set_default(@channel)
 	# Permission check succeeded, so send message using raw message
 	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(GRAY).' <'.color(WHITE).if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).color(GRAY).'> '.color(@channelInfo['textcolor']).@message)
+	foreach(@channelInfo['members'], @member,
+		_cc_set_last_channel_received(@member, @channel)
+	)
+)
+
+proc(_cc_send_alert, @channel, @message,
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	_cc_assert_manager(@channelInfo)
+	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
+	_cc_set_default(@channel)
+	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(@channelInfo['alertcolor']).' <'.if(player() == '~console',color(RED).'CONSOLE',player()).'> '.color(UNDERLINE).@message)
 	foreach(@channelInfo['members'], @member,
 		_cc_set_last_channel_received(@member, @channel)
 	)
