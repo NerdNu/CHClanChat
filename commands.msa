@@ -66,11 +66,31 @@
 	_cc_print_all_channels()	
 <<<
 
+*:/clanchat addbulletin $channel $ = >>>
+	_cc_add_bulletin($channel, $)
+<<<
+
+*:/clanchat removebulletin $channel $index = >>>
+	_cc_remove_bulletin($channel, $index)
+<<<
+
+*:/clanchat subscribe $channel = >>>
+	_cc_subscribe_bulletins($channel)
+<<<
+
+*:/clanchat unsubscribe $channel = >>>
+	_cc_unsubscribe_bulletins($channel)
+<<<
+
+*:/clanchat subscriptions = >>>
+	_cc_print_bulletin_subscriptions()
+<<<
+
 *:/clanchat chat $channel $ = >>>
 	if(player() != '~console'){
 		die('Sorry, you can\'t use this command')
 	}
-	_cc_send_message($channel, $)
+	_cc_send_message($channel, $, true)
 <<<
 
 *:/c [$] = >>>
@@ -96,12 +116,18 @@
 	if(@channel == null){
 		die(color(RED).'You don\'t have a default channel set (or aren\'t in any channels). Run '.color(LIGHT_PURPLE).'/clanchat'.color(RED).' for help')
 	}
-	_cc_send_message(@channel, @message)
+	_cc_send_message(@channel, @message, true)
+<<<
+
+*:/cq $channel $ = >>>
+	#Remove the # from the channel name. It's not needed, but kept in the command so it matches the others.
+	@channel = substr($channel, 1)
+	_cc_send_message(@channel, $, false)
 <<<
 
 *:/ca [$] = >>>
 	if($ == ''){
-		die(color(RED).'Usage: /c [#channel] message')
+		die(color(RED).'Usage: /ca [#channel] message')
 	}
 	@args = parse_args($)
 	@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
@@ -125,6 +151,32 @@
 	_cc_send_alert(@channel, @message)
 <<<
 
+*:/cme [$] = >>>
+	if($ == ''){
+		die(color(RED).'Usage: /cme [#channel] message')
+	}
+	@args = parse_args($)
+	@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
+	@channel = null
+	@message = null
+	if(array_size(@channelMatch) > 1){
+		@channel = @channelMatch[1]
+		@message = trim(array_implode(@args[1..], ' '))
+		if(@message == ''){
+			# They're just changing the default channel
+			_cc_set_default(@channel)
+			die()
+		}
+	} else {
+		@channel = _cc_get_default()
+		@message = trim($)
+	}
+	if(@channel == null){
+		die(color(RED).'You don\'t have a default channel set (or aren\'t in any channels). Run '.color(LIGHT_PURPLE).'/clanchat'.color(RED).' for help')
+	}
+	_cc_send_me_message(@channel, @message)
+<<<
+
 *:/cr [$] = >>>
 	if ($ == '') {
                 die(color(RED).'Usage: /cr message')
@@ -133,7 +185,7 @@
 	if(@channel == null){
 		die(color(RED).'No previous channel to send to')
 	} else {
-		_cc_send_message(@channel, $)
+		_cc_send_message(@channel, $, true)
 	}
 <<<
 
@@ -156,6 +208,22 @@
 		}
 	}
 <<<
+
+*:/cb [$] = >>>
+	if($ ==  '') {
+		_cc_print_all_bulletins($)
+	} else {
+		@args = parse_args($)
+		@channelMatch = reg_match('^(?i)\\s*#([a-z0-9_]+)\\s*$', @args[0])
+		if(array_size(@channelMatch) > 1){
+			@channel = @channelMatch[1]
+			_cc_print_bulletins(@channel)
+		} else {
+			die(color(RED).'Usage: /cb [#channel]')
+		}
+	}
+<<<
+
 
 *:/clanchat confirm [$]= >>>
 	
@@ -198,13 +266,21 @@
 	msg(color(BLUE).'/clanchat leave <channel>'.color(WHITE).' - Leaves a channel that you\'re in.')
 	msg(color(BLUE).'/clanchat list'.color(WHITE).' - Lists all the channels you are in.')
 	msg(color(BLUE).'/clanchat flags'.color(WHITE).' - Sets channel flags. Type /clanchat flags for more information.')
+	msg(color(BLUE).'/clanchat addbulletin <channel> <bulletin>'.color(WHITE).' - Add bulletin to the channel.')
+	msg(color(BLUE).'/clanchat removebulletin <channel> <number>'.color(WHITE).' - Remove the bulletin from the channel, <number> starts at 1 with the top bulletin.')
+	msg(color(BLUE).'/clanchat subscribe <channel>'.color(WHITE).' - Subscribe to a channel\'s bulletins.')
+	msg(color(BLUE).'/clanchat unsubscribe <channel>'.color(WHITE).' - Unsubscribe from a channel\'s bulletins.')
+	msg(color(BLUE).'/clanchat subscriptions'.color(WHITE).' - List your current bulletin subscriptions.')
 	msg(color(BLUE).'/c [#<channel>] <message...>'.color(WHITE).' - Sends a message to the channel. You must be a member of the channel. If you include the'
 			.' channel name (prefixed with #) it will select a channel. After you select a channel, it becomes the default channel, and you no longer'
 			.' need to provide the channel name, unless you want to switch default channels.')
+	msg(color(BLUE).'/cq [#<channel>] <message...>'.color(WHITE).' - Sends a quick message to the specified channel. This does not change your default channel.')
 	msg(color(BLUE).'/ca [#<channel>] <message...>'.color(WHITE).' - Sends an alert message to the channel. You must be an owner/manager of the channel. If a channel name'
 			.' is not included it will alert your current channel.')
+	msg(color(BLUE).'/cme [#<channel>] <message...>'.color(WHITE).' - Sends a "/me" type message to your current, or specified, channel.')
 	msg(color(BLUE).'/cr <message...>'.color(WHITE).' - Sends a message to the last channel that you received a message from, regardless of what your default'
 			.' channel is.')
+	msg(color(BLUE).'/cb [#<channel>]'.color(WHITE).' - List bulletins for all channels you are a member of, or specify a channel to receive on their bulletins.')
 	msg(color(BLUE).'/cm [#<channel>]'.color(WHITE).' - Lists all members in your default channel. If a channel is given, lists members in that channel.')
 	if(has_permission('nerdch.level.admin')){
 		msg(color(BLUE).'/clanchat channels'.color(WHITE).' - Lists all the channels and their owners.')

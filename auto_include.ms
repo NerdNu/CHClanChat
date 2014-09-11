@@ -6,6 +6,7 @@
  * 				- managers: array of managers
  *				- invites: array of invited, but not yet accepted players
  *				- members: array of players in this channel (including managers and the owner)
+ *				- bulletins: array of channel announcements
  *				- owner: The owner's name
  *				- color: the color of the channel name
  *				- textcolor: the color of the channel text
@@ -16,6 +17,7 @@
  * clanchat.players - An associative array of all the players (key) with their player infos:
  *				- lastReceived: The last channel they receieved a message from
  * 				- default: Their default channel name
+ *				- subscribed: The channels they will receive bulletins from on login
  * 				- channels: A list of this players channels
  */
 
@@ -48,6 +50,7 @@ proc(_cc_create_channel, @channel,
 			managers: array(),
 			invites: array(),
 			members: array(to_lower(strip_colors(player()))),
+			bulletins: array(),
 			owner: to_lower(strip_colors(player())),
 			color: 'BLUE',
 			textcolor: 'GRAY',
@@ -60,6 +63,8 @@ proc(_cc_create_channel, @channel,
 		store_value('clanchat.channels.'.@channel, @channelInfo)
 		@playerInfo = _cc_get_player_info(strip_colors(player()))
 		array_push(@playerInfo['channels'], @channel)
+		array_push(@playerInfo['subscribed'], @channel)
+		msg(color(BLUE).'You will receive bulletins from this channel on login. To unsubscribe run /clanchat unsubscribe '.@channel)
 		_cc_save_player_info(strip_colors(player()), @playerInfo)
 		_cc_set_default(@channel)
 		die(color(LIGHT_PURPLE).'Channel created!')
@@ -81,6 +86,7 @@ proc(_cc_delete_channel, @channel,
 			foreach(@members, @member,
 				@playerInfo = _cc_get_player_info(@member)
 				array_remove_values(@playerInfo['channels'], @channel)
+				array_remove_values(@playerInfo['subscribed'], @channel)
 				_cc_save_player_info(@member, @playerInfo)
 			)
 			@channels = get_value('clanchat.channels')
@@ -306,6 +312,7 @@ proc(_cc_remove_member, @channel, @player,
 	array_remove_values(@channelInfo['managers'], @player)
 	@playerInfo = _cc_get_player_info(@player)
 	array_remove_values(@playerInfo['channels'], @channel)
+	array_remove_values(@playerInfo['subscribed'], @channel)
 	_cc_save_player_info(@player, @playerInfo)
 	_cc_save_channel_info(@channel, @channelInfo)
 	die(color(BLUE).'Member removed.')
@@ -329,6 +336,12 @@ proc(_cc_join_channel, @channel,
 	array_push(@channelInfo['members'], to_lower(strip_colors(player())))
 	@playerInfo = _cc_get_player_info(strip_colors(player()))
 	array_push(@playerInfo['channels'], @channel)
+	if(array_size(@playerInfo['subscribed']) == 0) {
+		array_push(@playerInfo['subscribed'], @channel)
+		msg(color(BLUE).'You will receive bulletins from this channel on login. To unsubscribe run /clanchat unsubscribe '.@channel)
+	} else {
+		msg(color(BLUE).'To receive bulletins from this channel on login, run /clanchat subscribe '.@channel)
+	}
 	_cc_save_player_info(strip_colors(player()), @playerInfo)
 	_cc_set_default(@channel)
 	_cc_save_channel_info(@channel, @channelInfo)
@@ -358,6 +371,7 @@ proc(_cc_leave_channel, @channel,
 	}
 	array_remove_values(@channelInfo['members'], to_lower(strip_colors(player())))
 	array_remove_values(@playerInfo['channels'], @channel)
+	array_remove_values(@playerInfo['subscribed'], @channel)
 	_cc_save_player_info(strip_colors(player()), @playerInfo)
 	_cc_save_channel_info(@channel, @channelInfo)
 	
@@ -411,7 +425,7 @@ proc(_cc_get_last_channel_received, @player,
 )
 
 /**
- * Sets the last channel the player recieved a message from
+ * Sets the last channel the player received a message from
  */
 proc(_cc_set_last_channel_received, @player, @channel,
 	@channel = to_lower(@channel)
@@ -424,14 +438,16 @@ proc(_cc_set_last_channel_received, @player, @channel,
  * Sends a formatted message to the specified channel, only if the user
  * is in the channel.
  */
-proc(_cc_send_message, @channel, @message,
+proc(_cc_send_message, @channel, @message, @change,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	if(!array_contains_ic(@channelInfo['members'], strip_colors(player())) && player() != '~console'){
 		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
 	}
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
-	_cc_set_default(@channel)
+	if(@change) {
+		_cc_set_default(@channel)
+	}
 	# Permission check succeeded, so send message using raw message
 	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(GRAY).' <'.color(WHITE).if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).color(GRAY).'> '.color(@channelInfo['textcolor']).@message)
 	foreach(@channelInfo['members'], @member,
@@ -439,6 +455,9 @@ proc(_cc_send_message, @channel, @message,
 	)
 )
 
+/**
+ * Sends an underlined alert to the specified channel, only if the user is a manager of that channel.
+ */
 proc(_cc_send_alert, @channel, @message,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
@@ -446,6 +465,24 @@ proc(_cc_send_alert, @channel, @message,
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
 	_cc_set_default(@channel)
 	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.color(@channelInfo['alertcolor']).' <'.if(player() == '~console',color(RED).'CONSOLE',player()).'> '.color(UNDERLINE).@message)
+	foreach(@channelInfo['members'], @member,
+		_cc_set_last_channel_received(@member, @channel)
+	)
+)
+
+/**
+ * Sends a '/me' type message to the specified channel, only if the user is in the channel.
+ */
+proc(_cc_send_me_message, @channel, @message,
+	@channel = to_lower(@channel)
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(!array_contains_ic(@channelInfo['members'], strip_colors(player())) && player() != '~console'){
+		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
+	}
+	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).' '.if(player() == '~console',color(RED).'* CONSOLE'.color(RESET),'* '.strip_colors(player())).' '.@message, false)
+	_cc_set_default(@channel)
+	# Permission check succeeded, so send message using raw message
+	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.'] '.color(@channelInfo['textcolor']).if(player() == '~console','* CONSOLE','* '.strip_colors(player())).' '.@message)
 	foreach(@channelInfo['members'], @member,
 		_cc_set_last_channel_received(@member, @channel)
 	)
@@ -519,7 +556,92 @@ proc(_cc_flags, @channel, @flag, @bool,
 	
 )
 
+/**
+ * Bulletin methods
+ */
+proc(_cc_print_bulletins, @channel,
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))) {
+		die(color(RED).'You must be a member of '.@channel.' to see their bulletins')
+	}
+	
+	if(array_size(@channelInfo['bulletins']) > 0) {
+		foreach(@bulletin in @channelInfo['bulletins']) {
+			msg(color(@channelInfo['color']).'['.@channel.']'.' '.color(@channelInfo['alertcolor']).@bulletin)
+		}
+	} else {
+		die(color(BLUE).'There are no active bulletins for '.@channel)
+	}
+)
 
+proc(_cc_print_all_bulletins,
+	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	foreach(@channel in @playerInfo['channels']) {
+		if(array_size(_cc_get_channel_info(@channel)['bulletins']) > 0) {
+			_cc_print_bulletins(@channel)
+		}
+	}
+)
+
+proc(_cc_add_bulletin, @channel, @bulletin,
+	@channelInfo = _cc_get_channel_info(@channel)
+	_cc_assert_manager(@channelInfo)
+	array_push(@channelInfo['bulletins'], @bulletin)
+	_cc_save_channel_info(@channel, @channelInfo)
+	msg(color(BLUE).'Bulletin added successfully.')
+	_cc_send_raw_message(@channel, color(@channelInfo['color']).'['.@channel.']'.' '.color(@channelInfo['alertcolor']).@bulletin)
+)
+
+proc(_cc_remove_bulletin, @channel, @index,
+	@channelInfo = _cc_get_channel_info(@channel)
+	_cc_assert_manager(@channelInfo)
+	if(!is_integral(@index) || @index < 1) {
+		die(color(RED).'The bulletin index specified must be a non-zero integer')
+	}
+	if(array_index_exists(@channelInfo['bulletins'], @index - 1)) {
+		array_remove(@channelInfo['bulletins'], @index - 1)
+		_cc_save_channel_info(@channel, @channelInfo)
+		msg(color(BLUE).'Bulletin successfully removed')
+	} else {
+		die(color(RED).'There is no bulletin at that index')
+	}
+)
+
+proc(_cc_subscribe_bulletins, @channel,
+	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@channelInfo = _cc_get_channel_info(@channel)
+	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))) {
+		die(color(RED).'You must be a member of '.@channel.' to subscribe to their bulletins')
+	}
+	if(array_contains_ic(@playerInfo['subscribed'], @channel)) {
+		die(color(RED).'You are already subscribed to that channel')
+	} else {
+		array_push(@playerInfo['subscribed'], @channel)
+		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		msg(color(BLUE).'You are now subscribed to bulletins made in '.@channel)
+	}
+)
+
+proc(_cc_unsubscribe_bulletins, @channel,
+	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	if(array_contains_ic(@playerInfo['subscribed'], @channel)) {
+		array_remove_values(@playerInfo['subscribed'], @channel)
+		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		msg(color(BLUE).'You are now unsubscribed from bulletins made in '.@channel)
+	} else {
+		die(color(RED).'You are not subscribed to that channel.')
+	}
+)
+
+proc(_cc_print_bulletin_subscriptions,
+	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@subscribed = array_implode(@playerInfo['subscribed'],', ')
+	if(length(@subscribed) > 0) {
+		msg(color(BLUE).'Current subscriptions: '.color(GRAY).@subscribed)
+	} else {
+		die(color(BLUE).'You have no current subscriptions.')
+	}
+)
 
 /*
  * Utility methods
@@ -566,6 +688,9 @@ proc(_cc_get_channel_info, @channel,
 				secret: false
 			)
 		}
+		if(!array_contains(@keys, 'bulletins')) {
+			@channelInfo['bulletins'] = array()
+		}
 		if(!array_contains(@keys, 'textcolor')) {
 			@channelInfo['textcolor'] = GRAY
 		}
@@ -578,11 +703,18 @@ proc(_cc_get_channel_info, @channel,
 
 proc(_cc_get_player_info, @player,
 	@player = to_lower(@player)
-	return(_cc_get_value('clanchat.players.'.@player, array(
+	@playerInfo = (_cc_get_value('clanchat.players.'.@player, array(
 		default: null, 
 		channels: array(),
-		lastReceived: null
+		lastReceived: null,
+		subscribed: array()
 	)))
+	
+	if(!array_contains(array_keys(@playerInfo), 'subscribed')) {
+		@playerInfo['subscribed'] = array()
+	}
+	
+	return(@playerInfo)
 )
 
 proc(_cc_save_player_info, @player, @playerInfo,
