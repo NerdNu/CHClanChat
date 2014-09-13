@@ -66,6 +66,10 @@
 	_cc_print_all_channels()	
 <<<
 
+*:/clanchat public = >>>
+	_cc_print_all_public_channels()
+<<<
+
 *:/clanchat addbulletin $channel $ = >>>
 	_cc_add_bulletin($channel, $)
 <<<
@@ -265,6 +269,7 @@
 	msg(color(BLUE).'/clanchat join <channel>'.color(WHITE).' - Joins a channel that you\'ve already been invited to.')
 	msg(color(BLUE).'/clanchat leave <channel>'.color(WHITE).' - Leaves a channel that you\'re in.')
 	msg(color(BLUE).'/clanchat list'.color(WHITE).' - Lists all the channels you are in.')
+	msg(color(BLUE).'/clanchat public'.color(WHITE).' - Lists all public channels.')
 	msg(color(BLUE).'/clanchat flags'.color(WHITE).' - Sets channel flags. Type /clanchat flags for more information.')
 	msg(color(BLUE).'/clanchat addbulletin <channel> <bulletin>'.color(WHITE).' - Add bulletin to the channel.')
 	msg(color(BLUE).'/clanchat removebulletin <channel> <number>'.color(WHITE).' - Remove the bulletin from the channel, <number> starts at 1 with the top bulletin.')
