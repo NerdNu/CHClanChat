@@ -535,6 +535,23 @@ proc(_cc_print_all_channels,
 	)
 	msg(array_implode(@output, color(WHITE).', '))
 )
+
+/**
+ * Prints all public channels
+ */
+proc(_cc_print_all_public_channels,
+	@channels = _cc_get_value('clanchat.channels', array())
+	@output = array()
+	foreach(@channels, @channel,
+		@info = _cc_get_channel_info(@channel)
+		@public = @info['flags']['public']
+		if (@public == true) {
+			array_push(@output, color(@info['color']).@channel)
+		}
+	)
+	msg(array_implode(@output, color(WHITE).', '))
+)
+
 /**
  * Flag management
  */
