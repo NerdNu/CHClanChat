@@ -129,6 +129,30 @@
 	_cc_send_message(@channel, $, false)
 <<<
 
+*:/crq [$] = >>>
+	if ($ == '') {
+                die(color(RED).'Usage: /crq message')
+	}
+	@channel = _cc_get_last_channel_received(strip_colors(player()))
+	if(@channel == null){
+		die(color(RED).'No previous channel to send to')
+	} else {
+		_cc_send_message(@channel, $, false)
+	}
+<<<
+
+*:/cqr [$] = >>>
+	if ($ == '') {
+                die(color(RED).'Usage: /cqr message')
+	}
+	@channel = _cc_get_last_channel_received(strip_colors(player()))
+	if(@channel == null){
+		die(color(RED).'No previous channel to send to')
+	} else {
+		_cc_send_message(@channel, $, false)
+	}
+<<<
+
 *:/ca [$] = >>>
 	if($ == ''){
 		die(color(RED).'Usage: /ca [#channel] message')
@@ -285,6 +309,8 @@
 	msg(color(BLUE).'/cme [#<channel>] <message...>'.color(WHITE).' - Sends a "/me" type message to your current, or specified, channel.')
 	msg(color(BLUE).'/cr <message...>'.color(WHITE).' - Sends a message to the last channel that you received a message from, regardless of what your default'
 			.' channel is.')
+	msg(color(BLUE).'/crq <message...>'.color(WHITE).' or 'color(BLUE).'/cqr <message...>'.color(WHITE).' - Sends a message to the last channel that you received a'
+			.' message from, regardless of what your default channel is and does not change your default channel.')	
 	msg(color(BLUE).'/cb [#<channel>]'.color(WHITE).' - List bulletins for all channels you are a member of, or specify a channel to receive on their bulletins.')
 	msg(color(BLUE).'/cm [#<channel>]'.color(WHITE).' - Lists all members in your default channel. If a channel is given, lists members in that channel.')
 	if(has_permission('nerdch.level.admin')){
