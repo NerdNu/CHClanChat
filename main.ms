@@ -3,7 +3,8 @@
  */
 bind(player_login, null, null, @event,
 	@player = strip_colors(@event['player'])
-	@playerInfo = _cc_get_player_info(@player)
+	@uuid = _get_puuid(@player)
+	@playerInfo = _cc_get_player_info(@uuid)
 	set_timeout(500, closure(){
 		foreach(@subscription in @playerInfo['subscribed']) {
 			@channelInfo = _cc_get_channel_info(@subscription)

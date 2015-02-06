@@ -46,12 +46,13 @@ proc(_cc_create_channel, @channel,
 		array_push(@channels, @channel)
 		store_value('clanchat.channels', @channels)
 		# Set up the channel struct
+		@uuid = _get_puuid(player())
 		@channelInfo = array(
 			managers: array(),
 			invites: array(),
-			members: array(to_lower(strip_colors(player()))),
+			members: array(@uuid),
 			bulletins: array(),
-			owner: to_lower(strip_colors(player())),
+			owner: @uuid,
 			color: 'BLUE',
 			textcolor: 'GRAY',
 			alertcolor: 'GRAY',
@@ -61,20 +62,22 @@ proc(_cc_create_channel, @channel,
 			)
 		)
 		store_value('clanchat.channels.'.@channel, @channelInfo)
-		@playerInfo = _cc_get_player_info(strip_colors(player()))
+		@playerInfo = _cc_get_player_info(@uuid)
 		array_push(@playerInfo['channels'], @channel)
 		array_push(@playerInfo['subscribed'], @channel)
 		msg(color(BLUE).'You will receive bulletins from this channel on login. To unsubscribe run /clanchat unsubscribe '.@channel)
-		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		_cc_save_player_info(@uuid, @playerInfo)
 		_cc_set_default(@channel)
 		die(color(LIGHT_PURPLE).'Channel created!')
 	}
 )
+
 proc(_cc_delete_channel, @channel, 
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
+	@uuid = _get_puuid(player())
 	#make sure the player is the current owner
-	if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+	if ((@uuid != @channelInfo['owner']) && (strip_colors(player()) != '~console')) {
 		die(color(RED).'Only the owner can delete a channel')
 	}
 	msg(color(RED).'This command is irreversible. Your channel and all associated data WILL Be lost!')
@@ -102,9 +105,6 @@ proc(_cc_delete_channel, @channel,
 			unbind();
 		}
 	)
-
-
-
 )
 
 /**
@@ -115,11 +115,13 @@ proc(_cc_change_owner, @channel, @newOwner,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	#make sure the player is the current owner
-	if ((to_lower(strip_colors(player())) != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+	@uuid = _get_puuid(player())
+	if ((@uuid != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
 		die(color(RED).'Only the owner can set a new owner for the channel')
 	}
 	# set the new owner, add the old owner to the managers list
-	@channelInfo['owner'] = to_lower(@newOwner)
+	@uuid = _get_puuid(@newOwner)
+	@channelInfo['owner'] = @uuid
 	_cc_save_channel_info(@channel, @channelInfo)
 	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner)
 )
@@ -152,22 +154,24 @@ proc(_cc_set_channel_color, @channel, @color, @key, @description,
  * Messages out a list of all the players in the given channel
  */
 proc(_cc_print_members, @channel,
-	@playerInfo = _cc_get_player_info(to_lower(strip_colors(player())))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
 	if(@channelInfo['flags']['secret']){
-		if (!array_contains(@members, to_lower(strip_colors(player()))) && (player() != ~console)) {
+		if (!array_contains(@members, @uuid) && (player() != ~console)) {
 			die(color(RED).'This channel is secret. You must be a member of the channel to see who is in the channel')
 		}
 	}
 	@online = array()
 	@offline = array()
 	foreach(@members, @member,
-		if(ponline(@member)){
-			array_push(@online, player(@member))
+		@member_name = _get_username_from_uuid(@member)
+		if(ponline(@member_name)){
+			array_push(@online, player(@member_name))
 		} else {
-			array_push(@offline, @member)
+			array_push(@offline, @member_name)
 		}
 	)
 	msg(color(GOLD).'Online: '._cc_format_list(@online))
@@ -182,11 +186,12 @@ proc(_cc_print_members, @channel,
 proc(_cc_invite_member, @channel, @player,
 	@channel = to_lower(@channel)
 	@player = to_lower(@player)
+	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
 	@invites = @channelInfo['invites']
-	if(!array_contains(@invites, @player)){
-		array_push(@invites, @player)
+	if(!array_contains(@invites, @uuid)){
+		array_push(@invites, @uuid)
 		_cc_save_channel_info(@channel, @channelInfo)
 		if(ponline(@player)){
 			# Also inform them if they are online. If not, oh well.
@@ -205,13 +210,14 @@ proc(_cc_invite_member, @channel, @player,
 proc(_cc_uninvite_member, @channel, @player,
 	@channel = to_lower(@channel)
 	@player = to_lower(@player)
+	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
 	@invites = @channelInfo['invites']
-	if(!array_contains(@invites, @player)){
+	if(!array_contains(@invites, @uuid)){
 		die(color(RED).'That player isn\'t in the invite list.')
 	} else {
-		array_remove_values(@invites, @player)
+		array_remove_values(@invites, @uuid)
 		_cc_save_channel_info(@channel, @channelInfo)
 		die(color(BLUE).'Player removed from the invite list')
 	}
@@ -224,18 +230,19 @@ proc(_cc_uninvite_member, @channel, @player,
 proc(_cc_add_manager, @channel, @player,
 	@channel = to_lower(@channel)
 	@player = to_lower(@player)
+	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(@channelInfo['owner'] != to_lower(strip_colors(player()))){
+	if(@channelInfo['owner'] != _get_puuid(player())) {
 		die(color(RED).'Only the owner may add or remove managers')
 	}
 	@managers = @channelInfo['managers']
 	@members = @channelInfo['members']
-	if(!array_contains(@members, @player)){
+	if(!array_contains(@members, @uuid)){
 		die(color(RED).'Only members can be made managers. Invite them to the channel, and wait for them to join first.')
-	} else if(array_contains(@managers, @player)){
+	} else if(array_contains(@managers, @uuid)){
 		die(color(RED).@player.' is already a manager')
 	} else {
-		array_push(@managers, @player)
+		array_push(@managers, @uuid)
 		if(ponline(@player)){
 			tmsg(@player, color(BLUE).'You have been made a manager in '.@channel)
 		}
@@ -251,13 +258,14 @@ proc(_cc_add_manager, @channel, @player,
 proc(_cc_remove_manager, @channel, @player,
 	@channel = to_lower(@channel)
 	@player = to_lower(@player)
+	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(@channelInfo['owner'] != to_lower(strip_colors(player()))){
+	if(@channelInfo['owner'] != _get_puuid(player())) {
 		die(color(RED).'Only the owner may add or remove managers')
 	}
 	@managers = @channelInfo['managers']
-	if(array_contains(@managers, @player)){
-		array_remove_values(@managers, @player)
+	if(array_contains(@managers, @uuid)){
+		array_remove_values(@managers, @uuid)
 		_cc_save_channel_info(@channel, @channelInfo)
 		die(color(BLUE).'Player removed as a manager from '.@channel)
 	} else {
@@ -270,16 +278,17 @@ proc(_cc_remove_manager, @channel, @player,
  */
 proc(_cc_print_managers, @channel, 
 	@channel = to_lower(@channel)
-	@player = to_lower(player())
+	@uuid = _get_puuid(player())
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(@channelInfo['owner'] == @player){
+	if(@channelInfo['owner'] == @uuid){
 		@online = array()
 		@offline = array()
 		foreach(@channelInfo['managers'], @manager,
-			if(ponline(@manager)){
-				array_push(@online, player(@manager))
+			@managerName = _get_puuid(@manager)
+			if(ponline(@managerName)){
+				array_push(@online, player(@managerName))
 			} else {
-				array_push(@offline, @manager)
+				array_push(@offline, @managerName)
 			}
 		)
 	} else {
@@ -295,25 +304,25 @@ proc(_cc_print_managers, @channel,
  */
 proc(_cc_remove_member, @channel, @player,
 	@channel = to_lower(@channel)
-	@player = to_lower(@player)
+	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
-	if(@channelInfo['owner'] == @player){
+	if(@channelInfo['owner'] == @uuid){
 		die(color(RED).'You cannot remove the owner from a channel!')
 	}
-	if(to_lower(strip_colors(player())) != @channelInfo['owner'] && array_contains(@channelInfo['managers'], @player)){
+	if(_get_puuid(player()) != @channelInfo['owner'] && array_contains(@channelInfo['managers'], @uuid)){
 		die(color(RED).'Only the owner can remove a manager')
 	}
-	if(!array_contains(@channelInfo['members'], @player)){
+	if(!array_contains(@channelInfo['members'], @uuid)) {
 		die(color(RED).'That player isn\'t a member.')
 	}
 	# At this point, they are a manager, and we aren't trying to remove a manager
-	array_remove_values(@channelInfo['members'], @player)
-	array_remove_values(@channelInfo['managers'], @player)
-	@playerInfo = _cc_get_player_info(@player)
+	array_remove_values(@channelInfo['members'], @uuid)
+	array_remove_values(@channelInfo['managers'], @uuid)
+	@playerInfo = _cc_get_player_info(@uuid)
 	array_remove_values(@playerInfo['channels'], @channel)
 	array_remove_values(@playerInfo['subscribed'], @channel)
-	_cc_save_player_info(@player, @playerInfo)
+	_cc_save_player_info(@uuid, @playerInfo)
 	_cc_save_channel_info(@channel, @channelInfo)
 	die(color(BLUE).'Member removed.')
 )
@@ -324,17 +333,17 @@ proc(_cc_remove_member, @channel, @player,
 proc(_cc_join_channel, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@output = array()
 	if(array_contains(@playerInfo['channels'], @channel)){
 		die(color(RED).'You\'re already a member of this channel!')
 	}
-	if(and(!array_contains_ic(@channelInfo['invites'], strip_colors(player())),!(@channelInfo['flags']['public'] ))){
+	if(and(!array_contains_ic(@channelInfo['invites'], @uuid),!(@channelInfo['flags']['public'] ))){
 		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '.@channelInfo['owner'].' about joining')
 	}
-	array_remove_values(@channelInfo['invites'], to_lower(strip_colors(player())))
-	array_push(@channelInfo['members'], to_lower(strip_colors(player())))
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	array_remove_values(@channelInfo['invites'], @uuid)
+	array_push(@channelInfo['members'], @uuid)
 	array_push(@playerInfo['channels'], @channel)
 	if(array_size(@playerInfo['subscribed']) == 0) {
 		array_push(@playerInfo['subscribed'], @channel)
@@ -342,7 +351,7 @@ proc(_cc_join_channel, @channel,
 	} else {
 		msg(color(BLUE).'To receive bulletins from this channel on login, run /clanchat subscribe '.@channel)
 	}
-	_cc_save_player_info(strip_colors(player()), @playerInfo)
+	_cc_save_player_info(@uuid, @playerInfo)
 	_cc_set_default(@channel)
 	_cc_save_channel_info(@channel, @channelInfo)
 	msg(color(BLUE).'Type '.color(GRAY).'/c #'.@channel.' <msg>'.color(BLUE).' to say something to this channel, or just '.color(GRAY).'/c <msg>'.color(BLUE)
@@ -357,22 +366,23 @@ proc(_cc_join_channel, @channel,
 proc(_cc_leave_channel, @channel,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 
-	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))){
+	if(!array_contains(@channelInfo['members'], @uuid)){
 		die(color(RED).'You can\'t leave a channel you\'re not in')
 	}
 
 	#stop the owner from leaving his channels
-	if (@channelInfo['owner'] == to_lower(strip_colors(player()))){
+	if (@channelInfo['owner'] == @uuid){
 		if (array_size(@channelInfo['members']) != 1){
 			die(color(RED).'The owner can\'t leave their channel unless the channel is empty. Please set someone else as owner first, or use "/clanchat delete <channel>" to remove the channel.')
 		} 
 	}
-	array_remove_values(@channelInfo['members'], to_lower(strip_colors(player())))
+	array_remove_values(@channelInfo['members'], @uuid)
 	array_remove_values(@playerInfo['channels'], @channel)
 	array_remove_values(@playerInfo['subscribed'], @channel)
-	_cc_save_player_info(strip_colors(player()), @playerInfo)
+	_cc_save_player_info(@uuid, @playerInfo)
 	_cc_save_channel_info(@channel, @channelInfo)
 	
 	#if no players are in the channel, remove it
@@ -395,7 +405,8 @@ proc(_cc_set_default, @channel,
 		return()
 	}
 	@channel = to_lower(@channel)
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
 
 	if(@playerInfo['default'] != @channel){
@@ -403,7 +414,7 @@ proc(_cc_set_default, @channel,
 			die (color(RED).'You are not a member of '.@channel.'. Please speak to '.@channelInfo['owner'].' to join')
 		}
 		@playerInfo['default'] = @channel
-		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		_cc_save_player_info(@uuid, @playerInfo)
 		msg(color(DARK_BLUE).'Your default channel has been changed to '.@channel)
 	}
 )
@@ -412,7 +423,8 @@ proc(_cc_set_default, @channel,
  * Returns the player's default channel
  */
 proc(_cc_get_default,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	return(@playerInfo['default'])
 )
 
@@ -420,7 +432,8 @@ proc(_cc_get_default,
  * Returns the last channel the player sent a message to
  */
 proc(_cc_get_last_channel_received, @player,
-	@playerInfo = _cc_get_player_info(@player)
+	@uuid = _get_puuid(@player)
+	@playerInfo = _cc_get_player_info(@uuid)
 	return(@playerInfo['lastReceived'])
 )
 
@@ -429,9 +442,10 @@ proc(_cc_get_last_channel_received, @player,
  */
 proc(_cc_set_last_channel_received, @player, @channel,
 	@channel = to_lower(@channel)
-	@playerInfo = _cc_get_player_info(@player)
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@playerInfo['lastReceived'] = @channel
-	_cc_save_player_info(@player, @playerInfo)
+	_cc_save_player_info(@uuid, @playerInfo)
 )
 
 /**
@@ -441,7 +455,8 @@ proc(_cc_set_last_channel_received, @player, @channel,
 proc(_cc_send_message, @channel, @message, @change,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(!array_contains_ic(@channelInfo['members'], strip_colors(player())) && player() != '~console'){
+	@uuid = _get_puuid(player())
+	if(!array_contains_ic(@channelInfo['members'], @uuid) && player() != '~console'){
 		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
 	}
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
@@ -476,7 +491,8 @@ proc(_cc_send_alert, @channel, @message,
 proc(_cc_send_me_message, @channel, @message,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(!array_contains_ic(@channelInfo['members'], strip_colors(player())) && player() != '~console'){
+	@uuid = _get_puuid(player())
+	if(!array_contains_ic(@channelInfo['members'], @uuid) && player() != '~console'){
 		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
 	}
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).' '.if(player() == '~console',color(RED).'* CONSOLE'.color(RESET),'* '.strip_colors(player())).' '.@message, false)
@@ -497,10 +513,11 @@ proc(_cc_send_raw_message, @channel, @message,
 	@channelInfo = _cc_get_channel_info(@channel)
 	@members = @channelInfo['members']
 	foreach(@members, @member,
-		if(ponline(@member)){
-			tmsg(@member, @message)
-		} else if(ponline(color(a).@member.color(f))){
-			tmsg(color(a).@member.color(f), @message)
+		@memberName = _get_username_from_uuid(@member)
+		if(ponline(@memberName)){
+			tmsg(@memberName, @message)
+		} else if(ponline(color(a).@memberName.color(f))){
+			tmsg(color(a).@memberName.color(f), @message)
 		}
 	)
 )
@@ -509,7 +526,8 @@ proc(_cc_send_raw_message, @channel, @message,
  * Prints a list of all the channels you are subscribed to
  */
 proc(_cc_print_channels,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@output = array()
 	foreachelse(@playerInfo['channels'], @channel,
 		@channelInfo = _cc_get_channel_info(@channel)
@@ -531,7 +549,8 @@ proc(_cc_print_all_channels,
 	foreach(@channels, @channel,
 		@info = _cc_get_channel_info(@channel)
 		@owner = @info['owner']
-		array_push(@output, color(BLUE).@channel.color(WHITE).': '.color(GRAY).@owner)
+		@ownerName = _get_username_from_uuid(@owner)
+		array_push(@output, color(BLUE).@channel.color(WHITE).': '.color(GRAY).@ownerName)
 	)
 	msg(array_implode(@output, color(WHITE).', '))
 )
@@ -557,7 +576,8 @@ proc(_cc_print_all_public_channels,
  */
 proc(_cc_flags, @channel, @flag, @bool,
 	@channelInfo = _cc_get_channel_info(@channel)
-	if (to_lower(strip_colors(player())) != @channelInfo['owner']) {
+	@uuid = _get_puuid(player())
+	if (@uuid != @channelInfo['owner']) {
 		die(color(RED).'This command is only available to the channel owner')
 	}
 	if (!(or(@flag == 'public', @flag == 'secret'))) {
@@ -578,7 +598,8 @@ proc(_cc_flags, @channel, @flag, @bool,
  */
 proc(_cc_print_bulletins, @channel,
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))) {
+	@uuid = _get_puuid(player())
+	if(!array_contains(@channelInfo['members'], @uuid)) {
 		die(color(RED).'You must be a member of '.@channel.' to see their bulletins')
 	}
 	
@@ -592,7 +613,8 @@ proc(_cc_print_bulletins, @channel,
 )
 
 proc(_cc_print_all_bulletins,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	foreach(@channel in @playerInfo['channels']) {
 		if(array_size(_cc_get_channel_info(@channel)['bulletins']) > 0) {
 			_cc_print_bulletins(@channel)
@@ -625,25 +647,27 @@ proc(_cc_remove_bulletin, @channel, @index,
 )
 
 proc(_cc_subscribe_bulletins, @channel,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
-	if(!array_contains(@channelInfo['members'], to_lower(strip_colors(player())))) {
+	if(!array_contains(@channelInfo['members'], @uuid)) {
 		die(color(RED).'You must be a member of '.@channel.' to subscribe to their bulletins')
 	}
 	if(array_contains_ic(@playerInfo['subscribed'], @channel)) {
 		die(color(RED).'You are already subscribed to that channel')
 	} else {
 		array_push(@playerInfo['subscribed'], @channel)
-		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		_cc_save_player_info(@uuid, @playerInfo)
 		msg(color(BLUE).'You are now subscribed to bulletins made in '.@channel)
 	}
 )
 
 proc(_cc_unsubscribe_bulletins, @channel,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	if(array_contains_ic(@playerInfo['subscribed'], @channel)) {
 		array_remove_values(@playerInfo['subscribed'], @channel)
-		_cc_save_player_info(strip_colors(player()), @playerInfo)
+		_cc_save_player_info(@uuid, @playerInfo)
 		msg(color(BLUE).'You are now unsubscribed from bulletins made in '.@channel)
 	} else {
 		die(color(RED).'You are not subscribed to that channel.')
@@ -651,7 +675,8 @@ proc(_cc_unsubscribe_bulletins, @channel,
 )
 
 proc(_cc_print_bulletin_subscriptions,
-	@playerInfo = _cc_get_player_info(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@playerInfo = _cc_get_player_info(@uuid)
 	@subscribed = array_implode(@playerInfo['subscribed'],', ')
 	if(length(@subscribed) > 0) {
 		msg(color(BLUE).'Current subscriptions: '.color(GRAY).@subscribed)
@@ -718,9 +743,8 @@ proc(_cc_get_channel_info, @channel,
 	}
 )
 
-proc(_cc_get_player_info, @player,
-	@player = to_lower(@player)
-	@playerInfo = (_cc_get_value('clanchat.players.'.@player, array(
+proc(_cc_get_player_info, @uuid,
+	@playerInfo = (_cc_get_value('clanchat.players.'.@uuid, array(
 		default: null, 
 		channels: array(),
 		lastReceived: null,
@@ -734,12 +758,11 @@ proc(_cc_get_player_info, @player,
 	return(@playerInfo)
 )
 
-proc(_cc_save_player_info, @player, @playerInfo,
-	if(@player == '~console'){
+proc(_cc_save_player_info, @uuid, @playerInfo,
+	if(@uuid == '~console'){
 		return()
 	}
-	@player = to_lower(@player)
-	store_value('clanchat.players.'.@player, @playerInfo)
+	store_value('clanchat.players.'.@uuid, @playerInfo)
 )
 
 proc(_cc_save_channel_info, @channel, @channelInfo,
@@ -748,7 +771,8 @@ proc(_cc_save_channel_info, @channel, @channelInfo,
 )
 
 proc(_cc_assert_manager, @channelInfo,
-	if(@channelInfo['owner'] != to_lower(strip_colors(player())) && !array_contains_ic(@channelInfo['managers'], strip_colors(player()))){
+	@uuid = _get_puuid(player())
+	if ((@channelInfo['owner'] != @uuid) && !array_contains_ic(@channelInfo['managers'], @uuid)) {
 		die(color(RED).'Sorry, you have to be a manager to do that!')
 	}
 )
