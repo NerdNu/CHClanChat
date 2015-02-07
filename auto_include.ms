@@ -587,6 +587,7 @@ proc(_cc_flags, @channel, @flag, @bool,
 		die(color(RED).'Invalid command, type /clanchat flags for help (invalid boolean)'.@bool)
 	}
 	#at this point, we have an owner, and a valid command. MAGIC TIME.
+	@bool = (@bool == 'true')
 	@channelInfo['flags'][@flag] = @bool
 	_cc_save_channel_info(@channel, @channelInfo)
 	msg(color(BLUE).'Clanchat: '.@flag.' has been set to '.@bool.' for '.@channel)
