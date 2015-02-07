@@ -740,6 +740,11 @@ proc(_cc_get_channel_info, @channel,
 		if(!array_contains(@keys, 'alertcolor')) {
 			@channelInfo['alertcolor'] = GRAY
 		}
+		@uniqueMembers = array_unique(@channelInfo['members']);
+		if (array_size(@uniqueMembers) != array_size(@channelInfo['members'])) {
+			@channelInfo['members'] = array_unique(@channelInfo['members'])
+			_cc_save_channel_info(@channel, @channelInfo)
+		}
 		return(@channelInfo)
 	}
 )
