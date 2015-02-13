@@ -340,7 +340,7 @@ proc(_cc_join_channel, @channel,
 		die(color(RED).'You\'re already a member of this channel!')
 	}
 	if(and(!array_contains_ic(@channelInfo['invites'], @uuid),!(@channelInfo['flags']['public'] ))){
-		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '.@channelInfo['owner'].' about joining')
+		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '._get_username_from_uuid(@channelInfo['owner']).' about joining')
 	}
 	array_remove_values(@channelInfo['invites'], @uuid)
 	array_push(@channelInfo['members'], @uuid)
@@ -411,7 +411,7 @@ proc(_cc_set_default, @channel,
 
 	if(@playerInfo['default'] != @channel){
 		if (!array_contains(@playerInfo['channels'], @channel)){
-			die (color(RED).'You are not a member of '.@channel.'. Please speak to '.@channelInfo['owner'].' to join')
+			die (color(RED).'You are not a member of '.@channel.'. Please speak to '._get_username_from_uuid(@channelInfo['owner']).' to join')
 		}
 		@playerInfo['default'] = @channel
 		_cc_save_player_info(@uuid, @playerInfo)
