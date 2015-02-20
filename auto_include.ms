@@ -111,7 +111,7 @@ proc(_cc_delete_channel, @channel,
  * Sets the owner in @channel to @newowner
  * player() must be current owner
  */
-proc(_cc_change_owner, @channel, @newOwner,
+proc(_cc_change_owner, @channel, @newOwnerUUID,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	#make sure the player is the current owner
@@ -120,9 +120,9 @@ proc(_cc_change_owner, @channel, @newOwner,
 		die(color(RED).'Only the owner can set a new owner for the channel')
 	}
 	# set the new owner, add the old owner to the managers list
-	@uuid = _get_puuid(@newOwner)
-	@channelInfo['owner'] = @uuid
+	@channelInfo['owner'] = @newOwnerUUID
 	_cc_save_channel_info(@channel, @channelInfo)
+	@newOwner = _get_username_from_uuid(@newOwnerUUID)
 	die(color(AQUA).'You have relinquished ownership on '.@channel.' to '.@newOwner)
 )
 
@@ -183,10 +183,9 @@ proc(_cc_print_members, @channel,
  * Invites a player into this channel. The current player must be either an owner
  * or a manager to do this.
  */
-proc(_cc_invite_member, @channel, @player,
+proc(_cc_invite_member, @channel, @uuid,
 	@channel = to_lower(@channel)
-	@player = to_lower(@player)
-	@uuid = _get_puuid(@player)
+	@player = _get_username_from_uuid(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
 	@invites = @channelInfo['invites']
@@ -207,10 +206,9 @@ proc(_cc_invite_member, @channel, @player,
 /**
  * Uninvites a member that has been invited, but hasn't yet accepted.
  */
-proc(_cc_uninvite_member, @channel, @player,
+proc(_cc_uninvite_member, @channel, @uuid,
 	@channel = to_lower(@channel)
-	@player = to_lower(@player)
-	@uuid = _get_puuid(@player)
+	@player = _get_username_from_uuid(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
 	@invites = @channelInfo['invites']
@@ -227,10 +225,9 @@ proc(_cc_uninvite_member, @channel, @player,
  * Adds a user to the channel as a manager. Only the owner can run this.
  * The user must already be in the channel for this to work.
  */
-proc(_cc_add_manager, @channel, @player,
+proc(_cc_add_manager, @channel, @uuid,
 	@channel = to_lower(@channel)
-	@player = to_lower(@player)
-	@uuid = _get_puuid(@player)
+	@player = _get_username_from_uuid(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
 	if(@channelInfo['owner'] != _get_puuid(player())) {
 		die(color(RED).'Only the owner may add or remove managers')
@@ -255,10 +252,9 @@ proc(_cc_add_manager, @channel, @player,
  * Removes a user's manager permissions from the channel. Only the owner can
  * run this.
  */
-proc(_cc_remove_manager, @channel, @player,
+proc(_cc_remove_manager, @channel, @uuid,
 	@channel = to_lower(@channel)
-	@player = to_lower(@player)
-	@uuid = _get_puuid(@player)
+	@player = _get_username_from_uuid(@uuid)
 	@channelInfo = _cc_get_channel_info(@channel)
 	if(@channelInfo['owner'] != _get_puuid(player())) {
 		die(color(RED).'Only the owner may add or remove managers')
@@ -302,9 +298,8 @@ proc(_cc_print_managers, @channel,
  * Removes a player from this channel. The owner cannot be removed, and managers can
  * only be removed by the owner, and normal users don't have access at all.
  */
-proc(_cc_remove_member, @channel, @player,
+proc(_cc_remove_member, @channel, @uuid,
 	@channel = to_lower(@channel)
-	@uuid = _get_puuid(@player)
 	@channelInfo = _cc_get_channel_info(@channel)
 	_cc_assert_manager(@channelInfo)
 	if(@channelInfo['owner'] == @uuid){
@@ -340,7 +335,12 @@ proc(_cc_join_channel, @channel,
 		die(color(RED).'You\'re already a member of this channel!')
 	}
 	if(and(!array_contains_ic(@channelInfo['invites'], @uuid),!(@channelInfo['flags']['public'] ))){
-		die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with '._get_username_from_uuid(@channelInfo['owner']).' about joining')
+		@ownerName = _get_username_from_uuid(@channelInfo['owner'])
+		if (@ownerName != null) {
+			die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with ' . @ownerName . ' about joining')
+		} else {
+			die(color(RED).'You can\'t join a non-public channel without an invite. Please speak with ' . @channelInfo['owner'] . ' about joining')
+		}
 	}
 	array_remove_values(@channelInfo['invites'], @uuid)
 	array_push(@channelInfo['members'], @uuid)
@@ -411,7 +411,12 @@ proc(_cc_set_default, @channel,
 
 	if(@playerInfo['default'] != @channel){
 		if (!array_contains(@playerInfo['channels'], @channel)){
-			die (color(RED).'You are not a member of '.@channel.'. Please speak to '._get_username_from_uuid(@channelInfo['owner']).' to join')
+			@ownerName = _get_username_from_uuid(@channelInfo['owner'])
+			if (@ownerName != null) {
+				die (color(RED).'You are not a member of '.@channel.'. Please speak to '. @ownerName .' to join')
+			} else {
+				die (color(RED).'You are not a member of '.@channel.'. Please speak to '._get_username_from_uuid(@channelInfo['owner']).' to join')
+			}
 		}
 		@playerInfo['default'] = @channel
 		_cc_save_player_info(@uuid, @playerInfo)
@@ -431,8 +436,7 @@ proc(_cc_get_default,
 /**
  * Returns the last channel the player sent a message to
  */
-proc(_cc_get_last_channel_received, @player,
-	@uuid = _get_puuid(@player)
+proc(_cc_get_last_channel_received, @uuid,
 	@playerInfo = _cc_get_player_info(@uuid)
 	return(@playerInfo['lastReceived'])
 )
@@ -440,9 +444,8 @@ proc(_cc_get_last_channel_received, @player,
 /**
  * Sets the last channel the player received a message from
  */
-proc(_cc_set_last_channel_received, @player, @channel,
+proc(_cc_set_last_channel_received, @uuid, @channel,
 	@channel = to_lower(@channel)
-	@uuid = _get_puuid(player())
 	@playerInfo = _cc_get_player_info(@uuid)
 	@playerInfo['lastReceived'] = @channel
 	_cc_save_player_info(@uuid, @playerInfo)

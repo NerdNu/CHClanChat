@@ -23,30 +23,36 @@
 <<<
 
 *:/clanchat invite $channel $player = >>>
-	_cc_invite_member($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_invite_member($channel, @uuid)
 <<<
 
 *:/clanchat uninvite $channel $player = >>>
-	_cc_uninvite_member($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_uninvite_member($channel, @uuid)
 <<<
 
 *:/clanchat changeOwner $channel $player = >>>
-	_cc_change_owner($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_change_owner($channel, @uuid)
 <<<
 
 *:/clanchat addmanager $channel $player = >>>
-	_cc_add_manager($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_add_manager($channel, @uuid)
 <<<
 
 *:/clanchat removemanager $channel $player = >>>
-	_cc_remove_manager($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_remove_manager($channel, @uuid)
 <<<
 
 *:/clanchat listmanagers $channel = >>>
 	_cc_print_managers($channel)
 <<<
 *:/clanchat remove $channel $player = >>>
-	_cc_remove_member($channel, $player)
+	@uuid = _get_puuid($player)
+	_cc_remove_member($channel, @uuid)
 <<<
 
 *:/clanchat join $channel = >>>
@@ -185,7 +191,8 @@
 	if ($ == '') {
                 die(color(RED).'Usage: /cr message')
 	}
-	@channel = _cc_get_last_channel_received(strip_colors(player()))
+	@uuid = _get_puuid(player())
+	@channel = _cc_get_last_channel_received(@uuid)
 	if(@channel == null){
 		die(color(RED).'No previous channel to send to')
 	} else {
