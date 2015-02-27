@@ -37,7 +37,7 @@ proc(_cc_create_channel, @channel,
 		die()
 	} else {
 		# Success, the channel is available! But first, make sure it's properly formatted.
-		if(!reg_count('^(?i)[a-z0-9_]+$', @channel)){
+		if(!reg_count('^(?i)[a-z0-9_]+$', @channel) && @channel != '_'){
 			die(color(RED).'Oops! That channel name isn\'t valid. You can only have letters and numbers in your channel name.')
 		}	
 		if(length(@channel) > 16){
@@ -116,7 +116,7 @@ proc(_cc_change_owner, @channel, @newOwnerUUID,
 	@channelInfo = _cc_get_channel_info(@channel)
 	#make sure the player is the current owner
 	@uuid = _get_puuid(player())
-	if ((@uuid != @channelInfo['owner']) && (strip_colors(player()) != '~console')){
+	if ((@uuid != @channelInfo['owner']) && (strip_colors(player()) != '~console') && (!has_permission('clanchat.admin'))){
 		die(color(RED).'Only the owner can set a new owner for the channel')
 	}
 	# set the new owner, add the old owner to the managers list
@@ -459,7 +459,7 @@ proc(_cc_send_message, @channel, @message, @change,
 	@channel = to_lower(@channel)
 	@channelInfo = _cc_get_channel_info(@channel)
 	@uuid = _get_puuid(player())
-	if(!array_contains_ic(@channelInfo['members'], @uuid) && player() != '~console'){
+	if(!array_contains_ic(@channelInfo['members'], @uuid) && @channelInfo['owner'] != @uuid && player() != '~console'){
 		die(color(RED).'You can\'t send a message to a channel you aren\'t a member of')
 	}
 	console('ClanChat: '.color(WHITE).'['.color(@channelInfo['color']).@channel.color(WHITE).']'.color(RESET).'<'.if(player() == '~console',color(RED).'CONSOLE'.color(RESET),strip_colors(player())).'> '.@message, false)
@@ -548,6 +548,10 @@ proc(_cc_print_channels,
  */
 proc(_cc_print_all_channels,
 	@channels = _cc_get_value('clanchat.channels', array())
+	if (array_contains(@channels, '_')) {
+		array_remove_values(@channels, '_')
+		store_value('clanchat.channels', @channels)
+	}
 	@output = array()
 	foreach(@channels, @channel,
 		@info = _cc_get_channel_info(@channel)
@@ -565,11 +569,15 @@ proc(_cc_print_all_public_channels,
 	@channels = _cc_get_value('clanchat.channels', array())
 	@output = array()
 	foreach(@channels, @channel,
-		@info = _cc_get_channel_info(@channel)
-		@public = @info['flags']['public']
-		if (@public == true) {
-			array_push(@output, color(@info['color']).@channel)
-		}
+		try (
+			@info = _cc_get_channel_info(@channel)
+			@public = @info['flags']['public']
+			if (@public == true) {
+				array_push(@output, color(@info['color']).@channel)
+			}
+		,
+			console('ClanChat: Invalid channel name found: ' . @channel)
+		)
 	)
 	msg(array_implode(@output, color(WHITE).', '))
 )
