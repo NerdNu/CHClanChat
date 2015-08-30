@@ -32,7 +32,7 @@
 	_cc_uninvite_member($channel, @uuid)
 <<<
 
-*:/clanchat changeOwner $channel $player = >>>
+*:/clanchat changeowner $channel $player = >>>
 	@uuid = _get_puuid($player)
 	_cc_change_owner($channel, @uuid)
 <<<
